@@ -1,0 +1,27 @@
+from app.core.extensions import db
+from datetime import datetime
+
+class Chat(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationship
+    messages = db.relationship('Message', backref='chat', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Chat {self.id}>'
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chat_id = db.Column(db.Integer, db.ForeignKey('chat.id'), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # 'user' or 'assistant'
+    content = db.Column(db.Text, nullable=False)
+    content_type = db.Column(db.String(20), default='text')  # 'text', 'image', 'code'
+    file_path = db.Column(db.String(500))  # For uploaded files
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Message {self.id}>' 
