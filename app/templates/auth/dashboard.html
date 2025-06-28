@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Calliope AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="dashboard-nav">
+            <div class="nav-brand">
+                <i class="fas fa-robot"></i>
+                <h1>Calliope AI</h1>
+            </div>
+            <div class="nav-links">
+                <a href="/" class="nav-link">
+                    <i class="fas fa-comments"></i>
+                    Chat
+                </a>
+                <a href="/dashboard" class="nav-link active">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+            </div>
+            <div class="nav-user">
+                <button class="user-btn" id="userBtn">
+                    <i class="fas fa-user"></i>
+                </button>
+                <div class="dropdown-menu" id="userDropdown">
+                    <a href="#" id="logoutBtn">Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="dashboard-main">
+            <div class="dashboard-header">
+                <h2>Welcome back, <span id="userName">User</span>!</h2>
+                <p>Here's your activity overview</p>
+            </div>
+
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="totalChats">0</h3>
+                        <p>Total Chats</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-message"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="totalMessages">0</h3>
+                        <p>Total Messages</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="daysActive">0</h3>
+                        <p>Days Active</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-content">
+                <div class="recent-chats">
+                    <h3>Recent Chats</h3>
+                    <div class="chat-list" id="chatList">
+                        <div class="empty-state">
+                            <i class="fas fa-comments"></i>
+                            <p>No chats yet</p>
+                            <a href="/" class="btn-primary">Start a conversation</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="user-profile">
+                    <h3>Profile Settings</h3>
+                    <form id="profileForm" class="profile-form">
+                        <div class="form-group">
+                            <label for="profileUsername">Username</label>
+                            <input type="text" id="profileUsername" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profileEmail">Email</label>
+                            <input type="email" id="profileEmail" name="email" required>
+                        </div>
+                        <button type="submit" class="btn-primary">Update Profile</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html> 
