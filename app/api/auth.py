@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash
 from app.core.extensions import db, mail
 from app.models import User
 from flask_mail import Message as MailMessage
+import re
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -22,6 +23,20 @@ def register():
     
     if len(password) < 6:
         return jsonify({"error": "Password must be at least 6 characters long"}), 400
+    
+    # Password complexity policy
+    password_policy = [
+        (r'.{8,}', 'at least 8 characters'),
+        (r'[A-Z]', 'an uppercase letter'),
+        (r'[a-z]', 'a lowercase letter'),
+        (r'\d', 'a digit'),
+        (r'[^A-Za-z0-9]', 'a special character'),
+    ]
+    failed_rules = [desc for regex, desc in password_policy if not re.search(regex, password)]
+    if failed_rules:
+        return jsonify({
+            "error": "Password must contain " + ', '.join(failed_rules)
+        }), 400
     
     # Check if user already exists
     if User.query.filter_by(username=username).first():
