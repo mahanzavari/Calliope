@@ -4,7 +4,8 @@ from flask import Blueprint, request, jsonify, stream_with_context, Response, cu
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app.services.chat_service import ChatService
-from app.models import db, Chat, Message
+from app.core.extensions import db
+from app.models import Chat, Message
 from datetime import datetime
 
 chat_bp = Blueprint('chat', __name__)
@@ -177,4 +178,4 @@ def save_chat_to_db(user_message: str, bot_response: str):
         
     except Exception as e:
         print(f"Error saving chat to database: {e}")
-        db.session.rollback() 
+        db.session.rollback()

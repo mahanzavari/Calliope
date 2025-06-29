@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash
-from app.models import db, User
-from app.core.extensions import mail
+from app.core.extensions import db, mail
+from app.models import User
 from flask_mail import Message as MailMessage
 
 auth_bp = Blueprint('auth', __name__)
@@ -153,4 +153,4 @@ def update_profile():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": f"Profile update failed: {str(e)}"}), 500 
+        return jsonify({"error": f"Profile update failed: {str(e)}"}), 500

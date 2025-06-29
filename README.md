@@ -65,8 +65,8 @@ A modern AI chat application built with Flask, Langchain, and Google's Gemini AI
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
-   cd calliope-ai
+   git clone https://github.com/mahanzavari/Calliope
+   cd Calliope
    ```
 
 2. **Run automated setup**:
