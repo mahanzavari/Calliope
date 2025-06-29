@@ -11,7 +11,10 @@ class Config:
 
     # Langchain and API Keys
     GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
-    SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY')
+    GOOGLE_CUSTOM_SEARCH_ID = os.environ.get('GOOGLE_CUSTOM_SEARCH_ID')
+    
+    # Search Configuration
+    SEARCH_PROVIDER = os.environ.get('SEARCH_PROVIDER', 'duckduckgo')  # duckduckgo, google_custom, web_scraping, fallback
 
     # Session configuration
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)

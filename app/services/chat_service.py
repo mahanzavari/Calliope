@@ -15,7 +15,10 @@ class ChatService:
             temperature=0.7,
             convert_system_message_to_human=True
         )
-        self.rag_service = RAGService()
+        
+        # Initialize RAG service with configured search provider
+        search_provider = os.environ.get('SEARCH_PROVIDER', 'duckduckgo')
+        self.rag_service = RAGService(search_provider=search_provider)
 
     def _create_confidence_check_chain(self):
         """Create a chain to check if the query requires external information"""

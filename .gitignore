@@ -30,6 +30,7 @@ MANIFEST
 venv/
 env/
 ENV/
+vir/
 env.bak/
 venv.bak/
 

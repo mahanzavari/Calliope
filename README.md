@@ -1,12 +1,13 @@
 # Calliope AI Chat Application
 
-A modern AI chat application built with Flask, Langchain, and Google's Gemini AI, featuring intelligent RAG (Retrieval-Augmented Generation) capabilities.
+A modern AI chat application built with Flask, Langchain, and Google's Gemini AI, featuring intelligent RAG (Retrieval-Augmented Generation) capabilities with multiple search provider options.
 
 ## 🌟 Features
 
 ### AI Capabilities
 - **Google Gemini AI Integration**: Powered by Google's latest AI model
 - **Intelligent RAG System**: Automatic decision-making for web search vs. direct answers
+- **Multiple Search Providers**: DuckDuckGo, Google Custom Search, Web Scraping
 - **Manual Search Toggle**: Force web search for every query
 - **Real-time Streaming**: Live response generation with "Searching..." notifications
 - **File Analysis**: Upload and analyze images, code files, and documents
@@ -58,7 +59,7 @@ A modern AI chat application built with Flask, Langchain, and Google's Gemini AI
 - **Python 3.8+**
 - **PostgreSQL 12+**
 - **Google API Key** (for Gemini AI)
-- **SerpAPI Key** (for web search)
+- **Google Custom Search ID** (optional, for enhanced search)
 
 ### Quick Setup
 
@@ -84,15 +85,14 @@ A modern AI chat application built with Flask, Langchain, and Google's Gemini AI
 4. **Update API keys** in `.env`:
    ```env
    GOOGLE_API_KEY=your-google-api-key-here
-   SERPAPI_API_KEY=your-serpapi-key-here
+   GOOGLE_CUSTOM_SEARCH_ID=your-google-custom-search-id-here
    DATABASE_URL=postgresql://username:password@localhost:5432/calliope_ai
+   SEARCH_PROVIDER=duckduckgo
    ```
 
 5. **Initialize database**:
    ```bash
-   flask db init
-   flask db migrate
-   flask db upgrade
+   python init_db.py
    ```
 
 6. **Run the application**:
@@ -133,15 +133,46 @@ A modern AI chat application built with Flask, Langchain, and Google's Gemini AI
 
 6. **Initialize database**:
    ```bash
-   flask db init
-   flask db migrate
-   flask db upgrade
+   python init_db.py
    ```
 
 7. **Run the application**:
    ```bash
    python run.py
    ```
+
+## 🔍 Search Provider Options
+
+The application supports multiple search providers for web search functionality:
+
+### 1. **DuckDuckGo** (Default)
+- **Free**: No API key required
+- **Privacy-focused**: No tracking
+- **Rate limits**: Moderate usage limits
+- **Configuration**: `SEARCH_PROVIDER=duckduckgo`
+
+### 2. **Google Custom Search**
+- **Enhanced results**: Better search quality
+- **API key required**: Google API key + Custom Search ID
+- **Quota limits**: 100 free queries/day
+- **Configuration**: 
+  ```env
+  SEARCH_PROVIDER=google_custom
+  GOOGLE_API_KEY=your-key
+  GOOGLE_CUSTOM_SEARCH_ID=your-search-id
+  ```
+
+### 3. **Web Scraping**
+- **Fallback option**: Simple HTML scraping
+- **No API key**: Works without external services
+- **Limited results**: Basic search functionality
+- **Configuration**: `SEARCH_PROVIDER=web_scraping`
+
+### 4. **Fallback Mode**
+- **Automatic**: Tries multiple providers
+- **Resilient**: Falls back if one fails
+- **Best option**: For production use
+- **Configuration**: `SEARCH_PROVIDER=fallback`
 
 ## 🎯 Usage
 
@@ -168,7 +199,7 @@ The application uses an intelligent RAG (Retrieval-Augmented Generation) system:
 
 1. **Query Analysis**: AI analyzes if the query requires external information
 2. **Confidence Check**: Determines if direct answer or web search is needed
-3. **Search & Retrieval**: Performs Google search when needed
+3. **Search & Retrieval**: Performs web search using configured provider
 4. **Document Reranking**: Uses semantic similarity for better results
 5. **Response Generation**: Combines AI knowledge with search results
 
@@ -202,9 +233,10 @@ The application uses an intelligent RAG (Retrieval-Augmented Generation) system:
 SECRET_KEY=your-secret-key-here
 DATABASE_URL=postgresql://username:password@localhost:5432/calliope_ai
 GOOGLE_API_KEY=your-google-api-key-here
-SERPAPI_API_KEY=your-serpapi-key-here
 
 # Optional
+GOOGLE_CUSTOM_SEARCH_ID=your-google-custom-search-id-here
+SEARCH_PROVIDER=duckduckgo
 FLASK_ENV=development
 MAIL_USERNAME=your-email@gmail.com
 MAIL_PASSWORD=your-app-password
@@ -217,6 +249,13 @@ The application uses PostgreSQL for data persistence:
 - **Database**: `calliope_ai`
 - **Tables**: `user`, `chat`, `message`
 - **Migrations**: Flask-Migrate for schema management
+
+### Search Provider Configuration
+
+- **DuckDuckGo**: No additional configuration needed
+- **Google Custom Search**: Requires Google API key and Custom Search ID
+- **Web Scraping**: No additional configuration needed
+- **Fallback**: Automatically tries all available providers
 
 ### Customization
 
@@ -275,15 +314,20 @@ python -m pytest
 
 2. **API Key Errors**:
    - Verify Google API key is valid
-   - Check SerpAPI key configuration
+   - Check Google Custom Search configuration
    - Ensure keys are properly set in `.env`
 
-3. **Import Errors**:
+3. **Search Provider Issues**:
+   - DuckDuckGo: May be rate limited, try fallback mode
+   - Google Custom Search: Check API key and search ID
+   - Web Scraping: May be blocked by some websites
+
+4. **Import Errors**:
    - Activate virtual environment
    - Install dependencies: `pip install -r requirements.txt`
    - Check Python version (3.8+ required)
 
-4. **Database Errors**:
+5. **Database Errors**:
    - Run migrations: `flask db upgrade`
    - Check database connection
    - Verify PostgreSQL installation
@@ -319,6 +363,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **Langchain** for AI framework and tools
 - **Flask** for the web framework
 - **PostgreSQL** for reliable database storage
+- **DuckDuckGo** for privacy-focused search
 - **Font Awesome** for beautiful icons
 - **Marked.js** for markdown rendering
 
