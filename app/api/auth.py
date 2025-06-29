@@ -38,6 +38,11 @@ def register():
             "error": "Password must contain " + ', '.join(failed_rules)
         }), 400
     
+    # Email format validation
+    email_regex = r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+    if not re.match(email_regex, email):
+        return jsonify({"error": "Invalid email address format"}), 400
+    
     # Check if user already exists
     if User.query.filter_by(username=username).first():
         return jsonify({"error": "Username already exists"}), 400

@@ -5,9 +5,8 @@ if (loginForm) {
         e.preventDefault();
         const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
-        const errorMessage = document.getElementById('errorMessage');
-        errorMessage.style.display = 'none';
-        
+        // const errorMessage = document.getElementById('errorMessage');
+        // errorMessage.style.display = 'none';
         try {
             const response = await fetch('/auth/login', {
                 method: 'POST',
@@ -18,12 +17,10 @@ if (loginForm) {
             if (response.ok && data.success) {
                 window.location.href = '/dashboard';
             } else {
-                errorMessage.textContent = data.error || 'Login failed.';
-                errorMessage.style.display = 'block';
+                showError(data.error || 'Login failed.');
             }
         } catch (err) {
-            errorMessage.textContent = 'Network error. Please try again.';
-            errorMessage.style.display = 'block';
+            showError('Network error. Please try again.');
         }
     });
 }
@@ -38,17 +35,14 @@ if (registerForm) {
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
         const agreeTerms = document.getElementById('agreeTerms').checked;
-        const errorMessage = document.getElementById('errorMessage');
-        errorMessage.style.display = 'none';
-
+        // const errorMessage = document.getElementById('errorMessage');
+        // errorMessage.style.display = 'none';
         if (!agreeTerms) {
-            errorMessage.textContent = 'You must agree to the terms.';
-            errorMessage.style.display = 'block';
+            showError('You must agree to the terms.');
             return;
         }
         if (password !== confirmPassword) {
-            errorMessage.textContent = 'Passwords do not match.';
-            errorMessage.style.display = 'block';
+            showError('Passwords do not match.');
             return;
         }
         try {
@@ -61,12 +55,10 @@ if (registerForm) {
             if (response.ok && data.success) {
                 window.location.href = '/dashboard';
             } else {
-                errorMessage.textContent = data.error || 'Registration failed.';
-                errorMessage.style.display = 'block';
+                showError(data.error || 'Registration failed.');
             }
         } catch (err) {
-            errorMessage.textContent = 'Network error. Please try again.';
-            errorMessage.style.display = 'block';
+            showError('Network error. Please try again.');
         }
     });
 }
@@ -154,4 +146,38 @@ function setupPasswordToggle(inputId, toggleId) {
     }
 }
 setupPasswordToggle('password', 'togglePassword');
-setupPasswordToggle('confirmPassword', 'toggleConfirmPassword'); 
+setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
+
+// Error message auto-hide logic
+let errorTimeout;
+function showError(message) {
+    const errorMessage = document.getElementById('errorMessage');
+    if (!errorMessage) return;
+    errorMessage.textContent = message;
+    errorMessage.style.display = 'block';
+    if (errorTimeout) clearTimeout(errorTimeout);
+    errorTimeout = setTimeout(() => {
+        errorMessage.style.display = 'none';
+    }, 5000);
+}
+
+// Live email validation
+const emailInput = document.getElementById('email');
+const emailValidation = document.getElementById('emailValidation');
+if (emailInput && emailValidation) {
+    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+    emailInput.addEventListener('input', (e) => {
+        const value = e.target.value;
+        if (!value) {
+            emailValidation.textContent = '';
+            return;
+        }
+        if (emailRegex.test(value)) {
+            emailValidation.textContent = 'Valid email address';
+            emailValidation.style.color = '#28a745';
+        } else {
+            emailValidation.textContent = 'Invalid email address format';
+            emailValidation.style.color = '#dc3545';
+        }
+    });
+} 

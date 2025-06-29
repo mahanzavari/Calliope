@@ -123,6 +123,7 @@ body {
 /* Auth form */
 .auth-form {
     padding: 2rem;
+    position: relative;
 }
 
 .form-group {
@@ -141,6 +142,8 @@ body {
     position: relative;
     display: flex;
     align-items: center;
+    overflow: hidden;
+    width: 100%;
 }
 
 .input-wrapper i {
@@ -149,6 +152,7 @@ body {
     color: var(--text-muted);
     font-size: 1rem;
     z-index: 1;
+    pointer-events: none;
 }
 
 .input-wrapper input {
@@ -160,6 +164,7 @@ body {
     color: var(--text-primary);
     font-size: 1rem;
     transition: all 0.2s ease;
+    box-sizing: border-box;
 }
 
 .input-wrapper input:focus {
@@ -174,7 +179,7 @@ body {
 
 .toggle-password {
     position: absolute;
-    right: 1rem;
+    right: 0.5rem;
     top: 50%;
     transform: translateY(-50%);
     background: none;
@@ -186,6 +191,11 @@ body {
     border-radius: 0.25rem;
     transition: all 0.2s ease;
     z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.0rem;
+    width: 2.0rem;
 }
 
 .toggle-password:hover {
@@ -208,9 +218,9 @@ body {
 }
 
 .checkmark {
-    width: 18px;
-    height: 18px;
-    border: 2px solid var(--border-color);
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border-color);
     border-radius: 0.25rem;
     position: relative;
     transition: all 0.2s ease;
@@ -229,7 +239,7 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     color: white;
-    font-size: 0.75rem;
+    font-size: 1.25rem;
     font-weight: bold;
 }
 
@@ -302,13 +312,21 @@ body {
 
 /* Error message */
 .error-message {
+    position: fixed;
+    top: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 250px;
+    max-width: 90%;
     background-color: var(--error-color);
     color: white;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 1.5rem;
     border-radius: 0.5rem;
-    margin: 1rem 2rem;
-    font-size: 0.875rem;
+    font-size: 1rem;
     text-align: center;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    margin-bottom: 1.5rem;
     animation: shake 0.5s ease;
 }
 
@@ -375,4 +393,38 @@ body {
     .auth-header h2 {
         font-size: 1.25rem;
     }
+}
+
+/* Modal close button style (matches .auth-btn) */
+.modal button {
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+.modal button:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-hover);
+}
+
+/* Bigger checkmark for Terms of Service and Privacy Policy */
+.checkbox-wrapper .checkmark {
+    width: 28px;
+    height: 28px;
+    border-width: 3px;
+}
+.checkbox-wrapper input[type="checkbox"]:checked + .checkmark::after {
+    font-size: 1.25rem;
 } 

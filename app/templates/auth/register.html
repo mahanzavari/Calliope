@@ -8,6 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
+    <div id="errorMessage" class="error-message" style="display: none;"></div>
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
@@ -61,10 +62,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="checkbox-wrapper">
+                    <label class="checkbox-wrapper" style="cursor:pointer;">
                         <input type="checkbox" id="agreeTerms" name="agreeTerms">
                         <span class="checkmark"></span>
-                        I agree to the <a href="#" target="_blank">Terms of Service</a> and <a href="#" target="_blank">Privacy Policy</a>
+                        I agree to the <a href="#" id="tosLink">Terms of Service</a> and <a href="#" id="privacyLink">Privacy Policy</a>
                     </label>
                 </div>
 
@@ -77,10 +78,35 @@
             <div class="auth-footer">
                 <p>Already have an account? <a href="/login">Sign in</a></p>
             </div>
-
-            <div id="errorMessage" class="error-message" style="display: none;"></div>
         </div>
     </div>
+
+    <!-- Terms of Service Modal -->
+    <div id="tosModal" class="modal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
+      <div style="background:#fff; padding:2rem; border-radius:1rem; max-width:400px; margin:auto; position:relative;">
+        <h2>Terms of Service</h2>
+        <p>By using this service, you agree to use it responsibly and not for any unlawful purposes. The service is provided as-is without warranty. Your data may be stored for service improvement.</p>
+        <button onclick="document.getElementById('tosModal').style.display='none'" style="margin-top:1rem;">Close</button>
+      </div>
+    </div>
+    <!-- Privacy Policy Modal -->
+    <div id="privacyModal" class="modal" style="display:none; position:fixed; z-index:10000; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
+      <div style="background:#fff; padding:2rem; border-radius:1rem; max-width:400px; margin:auto; position:relative;">
+        <h2>Privacy Policy</h2>
+        <p>Your privacy is important. We do not sell your data. Information you provide is used only to provide and improve the service. Contact us for any privacy concerns.</p>
+        <button onclick="document.getElementById('privacyModal').style.display='none'" style="margin-top:1rem;">Close</button>
+      </div>
+    </div>
+    <script>
+    document.getElementById('tosLink').onclick = function(e) {
+      e.preventDefault();
+      document.getElementById('tosModal').style.display = 'flex';
+    };
+    document.getElementById('privacyLink').onclick = function(e) {
+      e.preventDefault();
+      document.getElementById('privacyModal').style.display = 'flex';
+    };
+    </script>
 
     <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
 </body>
