@@ -63,22 +63,33 @@ body {
 /* Main layout */
 .main-content {
     height: 100vh;
+    min-height: 100vh;
+    width: 100vw;
+    min-width: 100vw;
     display: flex;
     flex-direction: column;
+    background: var(--bg-primary);
 }
 
 .chat-container {
     flex: 1;
     display: flex;
     flex-direction: column;
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
+    width: 100vw;
+    min-width: 100vw;
+    height: 100vh;
+    min-height: 100vh;
+    margin: 0;
     background-color: var(--bg-primary);
 }
 
 /* Header */
 .chat-header {
+    flex-shrink: 0;
+    width: 100vw;
+    min-width: 100vw;
+    box-sizing: border-box;
+    z-index: 10;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -186,12 +197,16 @@ body {
 
 /* Messages area */
 .messages {
-    flex: 1;
+    flex: 1 1 auto;
     overflow-y: auto;
     padding: 2rem;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    min-height: 0;
+    width: 100vw;
+    min-width: 100vw;
+    box-sizing: border-box;
 }
 
 .welcome-message {
@@ -352,9 +367,13 @@ body {
 
 /* Input area */
 .input-container-wrapper {
+    flex-shrink: 0;
+    width: 100vw;
+    min-width: 100vw;
     padding: 1rem 2rem 2rem;
     background-color: var(--bg-secondary);
     border-top: 1px solid var(--border-color);
+    box-sizing: border-box;
 }
 
 .input-container {
@@ -363,6 +382,8 @@ body {
     border-radius: 1rem;
     padding: 1rem;
     box-shadow: var(--shadow);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .quoted-text-container {
@@ -520,42 +541,37 @@ body {
 
 /* Responsive design */
 @media (max-width: 768px) {
+    .main-content, .chat-container, .chat-header, .messages, .input-container-wrapper {
+        width: 100vw;
+        min-width: 100vw;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
     .chat-header {
         padding: 1rem;
     }
-    
-    .header-left h1 {
-        font-size: 1.25rem;
-    }
-    
     .messages {
         padding: 1rem;
     }
-    
-    .message {
-        max-width: 90%;
-    }
-    
     .input-container-wrapper {
-        padding: 1rem;
-    }
-    
-    .welcome-message {
-        padding: 1.5rem;
+        padding: 1rem 0 1.5rem 0;
     }
 }
 
 @media (max-width: 480px) {
-    .message {
-        max-width: 95%;
+    .main-content, .chat-container, .chat-header, .messages, .input-container-wrapper {
+        width: 100vw;
+        min-width: 100vw;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
-    
-    .input-wrapper {
-        gap: 0.5rem;
+    .chat-header {
+        padding: 0.5rem;
     }
-    
-    .upload-btn, .send-btn {
-        width: 36px;
-        height: 36px;
+    .messages {
+        padding: 0.5rem;
+    }
+    .input-container-wrapper {
+        padding: 0.5rem 0 1rem 0;
     }
 } 
