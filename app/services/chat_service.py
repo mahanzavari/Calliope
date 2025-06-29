@@ -3,14 +3,13 @@ from typing import Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain.chains import LLMChain
 from langchain_core.runnables import RunnablePassthrough
 from .rag_service import RAGService
 
 class ChatService:
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-pro",
+            model="gemini-2.0-flash",
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
             temperature=0.7,
             convert_system_message_to_human=True
@@ -32,7 +31,7 @@ class ChatService:
             
             Answer:"""
         )
-        return LLMChain(llm=self.llm, prompt=prompt, output_parser=StrOutputParser())
+        return prompt | self.llm | StrOutputParser()
 
     def _create_direct_answer_chain(self):
         """Create a chain for direct answers without RAG"""
@@ -44,7 +43,7 @@ class ChatService:
             
             Answer:"""
         )
-        return LLMChain(llm=self.llm, prompt=prompt, output_parser=StrOutputParser())
+        return prompt | self.llm | StrOutputParser()
 
     def _create_rag_chain(self):
         """Create a chain that uses RAG to answer queries"""
@@ -61,8 +60,15 @@ class ChatService:
             Answer:"""
         )
 
+        # This part of the chain prepares the dictionary for the prompt
+        # It takes a dictionary like {"query": "..."} as input
+        chain_input = {
+            "context": lambda x: self.rag_service.get_context(x["query"]),
+            "query": lambda x: x["query"]  # Pass only the query string
+        }
+
         return (
-            {"context": lambda x: self.rag_service.get_context(x["query"]), "query": RunnablePassthrough()}
+            chain_input
             | rag_prompt
             | self.llm
             | StrOutputParser()
@@ -80,14 +86,17 @@ class ChatService:
             AI response
         """
         try:
+            # The input for our chains is a dictionary
+            chain_input = {"query": query}
+
             if use_rag:
                 # RAG is force-enabled by the user
                 rag_chain = self._create_rag_chain()
-                return rag_chain.invoke({"query": query})
+                return rag_chain.invoke(chain_input)
             else:
                 # Check LLM confidence first
                 confidence_chain = self._create_confidence_check_chain()
-                confidence_response = confidence_chain.invoke({"query": query})
+                confidence_response = confidence_chain.invoke(chain_input)
                 
                 # Clean the response
                 confidence = confidence_response.strip().lower()
@@ -95,11 +104,11 @@ class ChatService:
                 if "no" in confidence:
                     # LLM is confident, answer directly
                     direct_answer_chain = self._create_direct_answer_chain()
-                    return direct_answer_chain.invoke({"query": query})
+                    return direct_answer_chain.invoke(chain_input)
                 else:
                     # LLM is not confident, perform RAG
                     rag_chain = self._create_rag_chain()
-                    return rag_chain.invoke({"query": query})
+                    return rag_chain.invoke(chain_input)
                     
         except Exception as e:
             return f"I apologize, but I encountered an error: {str(e)}. Please try again."
@@ -109,4 +118,4 @@ class ChatService:
         if file_type in ['py', 'js', 'html', 'css', 'java', 'cpp', 'c']:
             return f"Code file content:\n```{file_type}\n{file_content}\n```"
         else:
-            return f"File content:\n{file_content}" 
+            return f"File content:\n{file_content}"
