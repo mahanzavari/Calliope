@@ -36,7 +36,7 @@ class RAGService:
                 formatted_results.append({
                     'title': result.get('title', ''),
                     'snippet': result.get('body', ''),
-                    'link': result.get('link', ''),
+                    'link': result.get('href', ''), # Corrected from 'link' to 'href'
                     'source': 'duckduckgo'
                 })
             
@@ -85,7 +85,6 @@ class RAGService:
     def search_web_scraping(self, query: str, num_results: int = 5) -> List[Dict[str, Any]]:
         """Simple web scraping search using DuckDuckGo HTML"""
         try:
-            # Use DuckDuckGo's HTML search
             search_url = f"https://html.duckduckgo.com/html/?q={requests.utils.quote(query)}"
             
             headers = {
@@ -98,7 +97,6 @@ class RAGService:
             soup = BeautifulSoup(response.text, 'html.parser')
             results = []
             
-            # Find search results
             result_elements = soup.find_all('div', class_='result')[:num_results]
             
             for element in result_elements:
@@ -137,7 +135,6 @@ class RAGService:
                 print(f"{provider_name} failed: {e}")
                 continue
         
-        # If all providers fail, return empty results
         print("All search providers failed")
         return []
     
@@ -152,7 +149,6 @@ class RAGService:
         elif self.search_provider == "fallback":
             return self.search_fallback(query, num_results)
         else:
-            # Default to fallback
             return self.search_fallback(query, num_results)
     
     def extract_content_from_results(self, search_results: List[Dict[str, Any]]) -> List[Document]:
@@ -179,37 +175,28 @@ class RAGService:
         if not documents:
             return []
         
-        # Encode query and documents
         query_embedding = self.embedder.encode([query])
         doc_embeddings = self.embedder.encode([doc.page_content for doc in documents])
         
-        # Calculate similarities
         similarities = np.dot(doc_embeddings, query_embedding.T).flatten()
         
-        # Sort by similarity
         sorted_indices = np.argsort(similarities)[::-1]
         
-        # Return top-k documents
         reranked_docs = [documents[i] for i in sorted_indices[:top_k]]
         return reranked_docs
     
     def get_context(self, query: str, use_reranking: bool = True) -> str:
         """Get context from search with optional reranking"""
-        # Perform search
         search_results = self.search_google(query)
         
         if not search_results:
-            return ""
+            return "" # Return an empty string if there are no search results
         
-        # Extract documents
         documents = self.extract_content_from_results(search_results)
         
-        # Apply reranking if requested
         if use_reranking:
             documents = self.rerank_documents(query, documents)
         
-        # Combine documents into context
         context = "\n\n".join([doc.page_content for doc in documents])
         
         return context
- 
