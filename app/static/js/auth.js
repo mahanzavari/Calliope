@@ -4,7 +4,7 @@ if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value;
+        const password = document.getElementById('loginPassword').value;
         // const errorMessage = document.getElementById('errorMessage');
         // errorMessage.style.display = 'none';
         try {
@@ -32,8 +32,8 @@ if (registerForm) {
         e.preventDefault();
         const username = document.getElementById('username').value.trim();
         const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
+        const password = document.getElementById('registerPassword').value;
+        const confirmPassword = document.getElementById('registerConfirmPassword').value;
         const agreeTerms = document.getElementById('agreeTerms').checked;
         // const errorMessage = document.getElementById('errorMessage');
         // errorMessage.style.display = 'none';
@@ -145,8 +145,9 @@ function setupPasswordToggle(inputId, toggleId) {
         });
     }
 }
-setupPasswordToggle('password', 'togglePassword');
-setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
+setupPasswordToggle('loginPassword', 'loginTogglePassword');
+setupPasswordToggle('registerPassword', 'registerTogglePassword');
+setupPasswordToggle('registerConfirmPassword', 'registerToggleConfirmPassword');
 
 // Error message auto-hide logic
 let errorTimeout;
