@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calliope</title>
+    <title>Calliope AI Chat</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -12,24 +12,27 @@
     <div class="main-content">
         <div class="chat-container">
             <div class="chat-header">
-                <div class="header-left">
-                    <h1>Calliope</h1>
-                    <span class="status-indicator" id="statusIndicator">Online</span>
-                </div>
-                <div class="header-right">
-                    <button class="search-toggle" id="searchToggle" title="Toggle Search Mode">
-                        <i class="fas fa-search"></i>
-                    </button>
-                    <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
-                        <i class="fas fa-moon"></i>
-                    </button>
-                    <div class="user-menu">
-                        <button class="user-btn" id="userBtn">
-                            <i class="fas fa-user"></i>
+                <div class="content-limiter">
+                    <div class="header-brand">
+                        <h1>Calliope AI</h1>
+                        <span class="status-indicator" id="statusIndicator">Online</span>
+                    </div>
+            
+                    <div class="header-actions">
+                        <button class="search-toggle" id="searchToggle" title="Toggle Search Mode">
+                            <i class="fas fa-search"></i>
                         </button>
-                        <div class="dropdown-menu" id="userDropdown">
-                            <a href="/dashboard">Dashboard</a>
-                            <a href="#" id="logoutBtn">Logout</a>
+                        <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                        <div class="user-menu">
+                            <button class="user-btn" id="userBtn">
+                                <i class="fas fa-user"></i>
+                            </button>
+                            <div class="dropdown-menu" id="userDropdown">
+                                <a href="/dashboard">Dashboard</a>
+                                <a href="#" id="logoutBtn">Logout</a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -53,47 +56,47 @@
             </div>
 
             <div class="input-container-wrapper">
-                <div class="input-container">
-                    <div id="quoted-text-container" class="quoted-text-container" style="display: none;">
-                        <span id="quoted-text"></span>
-                        <button class="remove-quote-btn" onclick="removeQuote()">×</button>
-                    </div>
-                    
-                    <div class="input-wrapper">
-                        <label for="imageUpload" class="upload-btn" title="Upload image">
-                            <i class="fas fa-paperclip"></i>
-                        </label>
-                        <input type="file" id="imageUpload" accept="image/*" style="display: none;">
-
-                        <!-- Image preview area -->
-                        <div id="imagePreviewContainer" class="preview-container" style="display: none;">
-                            <img id="imagePreview" class="preview-image" src="" alt="Image preview">
-                            <button id="removeImageBtn" class="remove-preview-btn" title="Remove image">&times;</button>
+                <div class="content-limiter">
+                    <div class="input-container">
+                        <div id="quoted-text-container" class="quoted-text-container" style="display: none;">
+                            <span id="quoted-text"></span>
+                            <button class="remove-quote-btn" onclick="removeQuote()">×</button>
                         </div>
-                        <!-- Audio recording indicator -->
-                        <div id="audioRecordingIndicator" class="audio-indicator" style="display: none;">
-                            <i class="fas fa-microphone" id="micRecordingIcon" style="color: red;"></i>
-                            <span id="recordingTimer">00:00</span>
-                            <button id="cancelAudioBtn" class="remove-preview-btn" title="Cancel audio">&times;</button>
-                        </div>
+                        
+                        <div class="input-wrapper">
+                            <label for="imageUpload" class="upload-btn" title="Upload image">
+                                <i class="fas fa-paperclip"></i>
+                            </label>
+                            <input type="file" id="imageUpload" accept="image/*" style="display: none;">
 
-                        <textarea 
-                            id="messageInput" 
-                            placeholder="Type your message..." 
-                            rows="1"
-                            maxlength="4000"
-                        ></textarea>
-                        <button id="actionBtn" class="action-btn state-mic" type="button">
-                            <i class="fas fa-microphone mic-icon"></i>
-                            <i class="fas fa-paper-plane send-icon"></i>
-                        </button>
-                    </div>
-                    
-                    <div class="input-footer">
-                        <span class="char-count" id="charCount">0/4000</span>
-                        <div class="search-status" id="searchStatus">
-                            <i class="fas fa-search"></i>
-                            <span>Auto-search enabled</span>
+                            <div id="imagePreviewContainer" class="preview-container" style="display: none;">
+                                <img id="imagePreview" class="preview-image" src="" alt="Image preview">
+                                <button id="removeImageBtn" class="remove-preview-btn" title="Remove image">&times;</button>
+                            </div>
+                            <div id="audioRecordingIndicator" class="audio-indicator" style="display: none;">
+                                <i class="fas fa-microphone" id="micRecordingIcon" style="color: red;"></i>
+                                <span id="recordingTimer">00:00</span>
+                                <button id="cancelAudioBtn" class="remove-preview-btn" title="Cancel audio">&times;</button>
+                            </div>
+
+                            <textarea 
+                                id="messageInput" 
+                                placeholder="Type your message..." 
+                                rows="1"
+                                maxlength="4000"
+                            ></textarea>
+                            <button id="actionBtn" class="action-btn state-mic" type="button">
+                                <i class="fas fa-microphone mic-icon"></i>
+                                <i class="fas fa-paper-plane send-icon"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="input-footer">
+                            <span class="char-count" id="charCount">0/4000</span>
+                            <div class="search-status" id="searchStatus">
+                                <i class="fas fa-search"></i>
+                                <span>Auto-search enabled</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -101,7 +104,6 @@
         </div>
     </div>
 
-    <!-- Loading overlay -->
     <div class="loading-overlay" id="loadingOverlay" style="display: none;">
         <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
@@ -111,4 +113,4 @@
 
     <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
-</html> 
+</html>
