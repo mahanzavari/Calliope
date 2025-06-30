@@ -760,3 +760,81 @@ body {
     font-size: 0.875rem;
     animation: pulse 1.5s infinite;
 }
+
+.message.user-message {
+    position: relative; /* Needed for positioning the edit button */
+}
+
+.edit-btn {
+    position: absolute;
+    bottom: -10px;
+    right: -5px;
+    width: 28px;
+    height: 28px;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    opacity: 0; /* Hidden by default */
+    transition: opacity 0.2s, transform 0.2s;
+    transform: scale(0.8);
+}
+
+.user-message:hover .edit-btn {
+    opacity: 1; /* Show on hover */
+    transform: scale(1);
+}
+
+.edit-btn:hover {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.message-edit-area {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.message-edit-area textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 0.5rem;
+    border: 1px solid var(--accent-color);
+    border-radius: 6px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 1em;
+    resize: vertical;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.edit-actions button {
+    padding: 0.25rem 0.75rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.edit-actions .save-btn {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.edit-actions .cancel-btn {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
