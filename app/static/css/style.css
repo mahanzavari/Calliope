@@ -264,7 +264,7 @@ body {
     flex-direction: row-reverse;
 }
 
-.message.bot-message {
+.message.assistant-message {
     align-self: flex-start;
 }
 
@@ -284,7 +284,7 @@ body {
     color: var(--message-text-user);
 }
 
-.bot-message .message-avatar {
+.assistant-message .message-avatar {
     background-color: var(--accent-color);
     color: white;
 }
@@ -574,4 +574,112 @@ body {
     .input-container-wrapper {
         padding: 0.5rem 0 1rem 0;
     }
+}
+
+.action-btn {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: var(--accent-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, border-radius 0.2s, width 0.2s;
+    overflow: hidden;
+    margin-left: 0.5rem;
+}
+.action-btn:active {
+    background: var(--accent-hover);
+}
+.action-btn .mic-icon,
+.action-btn .send-icon {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    font-size: 1.3rem;
+    color: #fff;
+    opacity: 1;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+.action-btn .send-icon {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+}
+.action-btn.state-send .mic-icon {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+}
+.action-btn.state-send .send-icon {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+.action-btn.state-mic .mic-icon {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+.action-btn.state-mic .send-icon {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+}
+.action-btn.state-send {
+    width: 64px;
+    border-radius: 24px;
+    background: var(--success-color);
+}
+.action-btn.state-send:active {
+    background: var(--success-color);
+    filter: brightness(0.95);
 } 
+
+.quote-popup {
+    position: absolute;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    z-index: 1001; /* Ensure it's above other elements */
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: transform 0.1s ease, background-color 0.2s ease;
+}
+
+.quote-popup:hover {
+    background-color: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+
+.message-quote-display {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+    font-size: 0.9em;
+    border-left: 3px solid;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Light Theme styles for the quote */
+.user-message .message-quote-display {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-color);
+    color: var(--message-text-user);
+}
+
+/* Dark Theme styles for the quote */
+[data-theme="dark"] .user-message .message-quote-display {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent-color);
+}
