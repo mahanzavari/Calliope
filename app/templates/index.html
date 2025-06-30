@@ -60,20 +60,32 @@
                     </div>
                     
                     <div class="input-wrapper">
-                        <label for="imageUpload" class="upload-btn" title="Upload file">
+                        <label for="imageUpload" class="upload-btn" title="Upload image">
                             <i class="fas fa-paperclip"></i>
                         </label>
-                        <input type="file" id="imageUpload" accept="image/*, .py, .js, .html, .css, .java, .cpp, .c, .txt" style="display: none;">
-                        
+                        <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+
+                        <!-- Image preview area -->
+                        <div id="imagePreviewContainer" class="preview-container" style="display: none;">
+                            <img id="imagePreview" class="preview-image" src="" alt="Image preview">
+                            <button id="removeImageBtn" class="remove-preview-btn" title="Remove image">&times;</button>
+                        </div>
+                        <!-- Audio recording indicator -->
+                        <div id="audioRecordingIndicator" class="audio-indicator" style="display: none;">
+                            <i class="fas fa-microphone" id="micRecordingIcon" style="color: red;"></i>
+                            <span id="recordingTimer">00:00</span>
+                            <button id="cancelAudioBtn" class="remove-preview-btn" title="Cancel audio">&times;</button>
+                        </div>
+
                         <textarea 
                             id="messageInput" 
                             placeholder="Type your message..." 
                             rows="1"
                             maxlength="4000"
                         ></textarea>
-                        
-                        <button id="sendBtn" class="send-btn" title="Send message">
-                            <i class="fas fa-paper-plane"></i>
+                        <button id="actionBtn" class="action-btn state-mic" type="button">
+                            <i class="fas fa-microphone mic-icon"></i>
+                            <i class="fas fa-paper-plane send-icon"></i>
                         </button>
                     </div>
                     
