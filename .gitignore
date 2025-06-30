@@ -52,7 +52,7 @@ uploads/
 *.pdf
 *.txt
 *.py
-*.js
+# *.js
 *.html
 *.css
 *.java
