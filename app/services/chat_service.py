@@ -11,13 +11,12 @@ class ChatService:
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash",
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
-            temperature=0.7,
-            convert_system_message_to_human=True
+            temperature=0.7
+            # The 'convert_system_message_to_human=True' parameter has been removed
         )
         
         # Initialize RAG service with configured search provider
-        search_provider = os.environ.get('SEARCH_PROVIDER', 'duckduckgo')
-        self.rag_service = RAGService(search_provider=search_provider)
+        self.rag_service = RAGService()
 
     def _create_confidence_check_chain(self):
         """Create a chain to check if the query requires external information"""
@@ -60,11 +59,9 @@ class ChatService:
             Answer:"""
         )
 
-        # This part of the chain prepares the dictionary for the prompt
-        # It takes a dictionary like {"query": "..."} as input
         chain_input = {
             "context": lambda x: self.rag_service.get_context(x["query"]),
-            "query": lambda x: x["query"]  # Pass only the query string
+            "query": lambda x: x["query"]
         }
 
         return (
@@ -86,27 +83,21 @@ class ChatService:
             AI response
         """
         try:
-            # The input for our chains is a dictionary
             chain_input = {"query": query}
 
             if use_rag:
-                # RAG is force-enabled by the user
                 rag_chain = self._create_rag_chain()
                 return rag_chain.invoke(chain_input)
             else:
-                # Check LLM confidence first
                 confidence_chain = self._create_confidence_check_chain()
                 confidence_response = confidence_chain.invoke(chain_input)
                 
-                # Clean the response
                 confidence = confidence_response.strip().lower()
                 
                 if "no" in confidence:
-                    # LLM is confident, answer directly
                     direct_answer_chain = self._create_direct_answer_chain()
                     return direct_answer_chain.invoke(chain_input)
                 else:
-                    # LLM is not confident, perform RAG
                     rag_chain = self._create_rag_chain()
                     return rag_chain.invoke(chain_input)
                     

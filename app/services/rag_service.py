@@ -7,22 +7,48 @@ from langchain_core.documents import Document
 from bs4 import BeautifulSoup
 import time
 import random
+from app.services.search.providers.tavily_provider import TavilySearchProvider
+from app.services.search.providers.bing_provider import BingSearchProvider
+from app.services.search.providers.duckduckgo_provider import DuckDuckGoSearchProvider
 
 class RAGService:
-    def __init__(self, search_provider: str = "duckduckgo"):
+    def __init__(self, search_provider_names: Optional[List[str]] = None):
         """
-        Initialize RAG service with specified search provider
-        
+        Initialize RAG service with specified search providers
         Args:
-            search_provider: "duckduckgo", "google_custom", "web_scraping", or "fallback"
+            search_provider_names: list of provider names to use (e.g., ["tavily", "bing", "duckduckgo"])
         """
-        self.search_provider = search_provider
         self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
-        
-        # Search provider configurations
-        self.google_custom_search_id = os.environ.get('GOOGLE_CUSTOM_SEARCH_ID')
-        self.google_api_key = os.environ.get('GOOGLE_API_KEY')
-        
+        self.providers = []
+        # Determine which providers to use
+        provider_names = search_provider_names or os.environ.get('SEARCH_PROVIDERS', 'tavily,bing,duckduckgo').split(',')
+        provider_names = [p.strip().lower() for p in provider_names]
+        # Instantiate providers
+        for name in provider_names:
+            if name == 'tavily':
+                provider = TavilySearchProvider()
+            elif name == 'bing':
+                provider = BingSearchProvider()
+            elif name == 'duckduckgo':
+                provider = DuckDuckGoSearchProvider()
+            else:
+                continue
+            if provider.is_available():
+                self.providers.append(provider)
+
+    def get_context(self, query: str, num_results: int = 5) -> List[Dict[str, Any]]:
+        """
+        Run the query on all configured providers and return merged results
+        """
+        all_results = []
+        for provider in self.providers:
+            try:
+                results = provider.search(query, num_results=num_results)
+                all_results.extend(results)
+            except Exception as e:
+                print(f"Search error with {provider.get_provider_name()}: {e}")
+        return all_results
+
     def search_duckduckgo(self, query: str, num_results: int = 5) -> List[Dict[str, Any]]:
         """Search using DuckDuckGo (free, no API key required)"""
         try:
