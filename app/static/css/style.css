@@ -683,3 +683,80 @@ body {
     background-color: rgba(255, 255, 255, 0.1);
     border-color: var(--accent-color);
 }
+
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 1rem 0;
+}
+
+.typing-indicator span {
+    height: 10px;
+    width: 10px;
+    margin: 0 3px;
+    background-color: var(--text-muted);
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse-dot 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes pulse-dot {
+    0%, 80%, 100% {
+        transform: scale(0);
+    } 40% {
+        transform: scale(1.0);
+    }
+}
+
+
+/* RAG Searching Indicator */
+.searching-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+.searching-indicator .book-icon {
+    font-size: 1.5em;
+    position: relative;
+    animation: flip-page 1.5s infinite linear;
+}
+
+.searching-indicator .search-icon {
+    font-size: 1.2em;
+    color: var(--accent-color);
+}
+
+@keyframes flip-page {
+    0% { transform: rotateY(0deg); }
+    50% { transform: rotateY(180deg); }
+    100% { transform: rotateY(0deg); }
+}
+
+.searching-indicator .message {
+    font-weight: 500;
+}
+
+/* Remove the old, simple searching message style */
+.searching-message {
+    /* This class is no longer used for a complex indicator, but we'll keep it for simple text messages */
+    align-self: center;
+    background-color: var(--warning-color);
+    color: var(--text-primary);
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    animation: pulse 1.5s infinite;
+}

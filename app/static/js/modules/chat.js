@@ -18,6 +18,11 @@ export async function sendMessage(message, isSearchEnabled) {
 
     if (!message && !hasImage && !hasAudio) return;
 
+    const welcomeMessage = document.querySelector('.welcome-message');
+    if (welcomeMessage) {
+        welcomeMessage.remove();
+    }
+
     isProcessing = true;
     document.getElementById('actionBtn').disabled = true;
 
@@ -44,7 +49,8 @@ export async function sendMessage(message, isSearchEnabled) {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        const botMessageDiv = addMessageToUI('assistant', '', true);
+        // --- MODIFICATION: The 'isStreaming' flag will now add the 3-dot indicator ---
+        const botMessageDiv = addMessageToUI('assistant', '', true); 
         const botTextDiv = botMessageDiv.querySelector('.message-text');
 
         while (true) {
@@ -55,9 +61,26 @@ export async function sendMessage(message, isSearchEnabled) {
             for (const line of lines) {
                 if (line.startsWith('data:')) {
                     const data = JSON.parse(line.substring(5));
-                    if (data.status === 'searching') botTextDiv.innerHTML = `<div class="searching-message">${data.message}</div>`;
-                    else if (data.response) botTextDiv.innerHTML = marked.parse(data.response);
-                    else if (data.error) botTextDiv.innerHTML = `<div class="error-message">${data.error}</div>`;
+                    
+                    // --- MODIFICATION START: Conditionally render the correct indicator ---
+                    if (data.status === 'searching') {
+                        // Render the RAG searching indicator
+                        botTextDiv.innerHTML = `
+                            <div class="searching-indicator">
+                                <i class="fas fa-search search-icon"></i>
+                                <span class="message">${data.message}</span>
+                                <i class="fas fa-book-open book-icon"></i>
+                            </div>
+                        `;
+                    } else if (data.response) {
+                        // Once we get a response, replace indicator with the actual text
+                        botTextDiv.innerHTML = marked.parse(data.response);
+                    } else if (data.error) {
+                        // Handle errors
+                        botTextDiv.innerHTML = `<div class="error-message">${data.error}</div>`;
+                    }
+                    // The 3-dot indicator is already shown by default from addMessageToUI
+                    // --- MODIFICATION END ---
                 }
             }
         }
@@ -92,7 +115,19 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
 
     const textDiv = document.createElement('div');
     textDiv.className = 'message-text';
-    textDiv.innerHTML = isStreaming ? '<div class="typing-indicator"><span></span><span></span><span></span></div>' : marked.parse(content);
+    
+    // --- MODIFICATION: Inject the 3-dot indicator when streaming ---
+    if (isStreaming) {
+        textDiv.innerHTML = `
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        `;
+    } else {
+        textDiv.innerHTML = marked.parse(content);
+    }
     contentDiv.appendChild(textDiv);
 
     if (role === 'assistant') {
