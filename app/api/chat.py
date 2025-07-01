@@ -1,5 +1,3 @@
-# In app/api/chat.py
-
 import os
 import json
 from flask import Blueprint, request, jsonify, stream_with_context, Response, current_app
@@ -19,11 +17,6 @@ def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def allowed_file(filename):
-    """Check if file extension is allowed"""
-    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'py', 'js', 'html', 'css', 'java', 'cpp', 'c'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 @chat_bp.route('/chat', methods=['POST'])
 @login_required
 def chat():
@@ -33,29 +26,29 @@ def chat():
     use_search = data.get('use_search', False)
     quoted_text = data.get('quoted_text', '')
 
-    if not query:
+    if not query and not data.get('is_file_upload_message'):
         return jsonify({"error": "Message is required"}), 400
 
-    # Combine quoted text with query if present
     if quoted_text:
         query = f"Regarding: '{quoted_text}'\n\n{query}"
 
     def generate():
+        full_bot_response = ""
         try:
-            # Send searching notification if RAG is enabled
             if use_search:
                 yield f'data: {json.dumps({"status": "searching", "message": "Searching..."})}\n\n'
 
-            # Get response from chat service
-            response = chat_service.get_response(query, use_search)
+            # get_response is a generator, so we loop through it
+            for chunk in chat_service.get_response(query, use_search):
+                full_bot_response += chunk
+                # Stream each chunk to the frontend as it arrives
+                yield f'data: {json.dumps({"response": chunk})}\n\n'
 
-            # Send the response
-            yield f'data: {json.dumps({"response": response})}\n\n'
-
-            # Save to database
-            save_chat_to_db(query, response)
+            # After the stream is complete, save the fully accumulated response
+            save_chat_to_db(query, full_bot_response)
 
         except Exception as e:
+            # This will now correctly handle any exceptions during the process
             error_msg = f"An error occurred: {str(e)}"
             yield f'data: {json.dumps({"error": error_msg})}\n\n'
 
@@ -172,26 +165,15 @@ def save_chat_to_db(user_message: str, bot_response: str):
         if not chat:
             chat = Chat(user_id=current_user.id, title="New Chat")
             db.session.add(chat)
-            db.session.flush()  # Get the chat ID
+            db.session.flush()
 
         # Create messages
-        user_msg = Message(
-            chat_id=chat.id,
-            role='user',
-            content=user_message,
-            content_type='text'
-        )
-
-        bot_msg = Message(
-            chat_id=chat.id,
-            role='assistant',
-            content=bot_response,
-            content_type='text'
-        )
-
+        user_msg = Message(chat_id=chat.id, role='user', content=user_message)
+        bot_msg = Message(chat_id=chat.id, role='assistant', content=bot_response)
+        
         db.session.add_all([user_msg, bot_msg])
         db.session.commit()
-
+        
     except Exception as e:
         print(f"Error saving chat to database: {e}")
         db.session.rollback()
