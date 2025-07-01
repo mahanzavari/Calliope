@@ -9,13 +9,10 @@ from .rag_service import RAGService
 class ChatService:
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
+            model="gemini-2.0-flash", # Corrected model name
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
             temperature=0.7
-            # The 'convert_system_message_to_human=True' parameter has been removed
         )
-        
-        # Initialize RAG service with configured search provider
         self.rag_service = RAGService()
 
     def _create_confidence_check_chain(self):
@@ -104,9 +101,13 @@ class ChatService:
         except Exception as e:
             return f"I apologize, but I encountered an error: {str(e)}. Please try again."
 
+    # --- MODIFICATION START ---
     def process_file_content(self, file_content: str, file_type: str) -> str:
-        """Process uploaded file content and return context"""
+        """Process uploaded file content and return context, formatted for Markdown."""
         if file_type in ['py', 'js', 'html', 'css', 'java', 'cpp', 'c']:
-            return f"Code file content:\n```{file_type}\n{file_content}\n```"
+            # Only return the Markdown code block, without the extra text
+            return f"```{file_type}\n{file_content}\n```"
         else:
-            return f"File content:\n{file_content}"
+            # For plain text files, just return the content directly
+            return file_content
+    # --- MODIFICATION END ---

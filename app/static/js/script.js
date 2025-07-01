@@ -29,12 +29,14 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
     setupEventListeners();
     updateActionButtonState();
+
+    // Configure marked.js to use highlight.js for syntax highlighting
     marked.setOptions({
         highlight: function(code, lang) {
             const language = hljs.getLanguage(lang) ? lang : 'plaintext';
             return hljs.highlight(code, { language }).value;
         },
-        langPrefix: 'hljs language-'
+        langPrefix: 'hljs language-' // Use 'hljs' class prefix for compatibility
     });
 });
 
@@ -50,7 +52,7 @@ function setupEventListeners() {
     actionBtn.addEventListener('click', handleActionButton);
     messagesContainer.addEventListener('mouseup', handleTextSelection);
 
-    // --- MODIFICATION START: Consolidated Event Listener ---
+    // Consolidated Event Listener for all message-related actions
     messagesContainer.addEventListener('click', e => {
         const attachment = e.target.closest('.file-attachment');
         if (attachment) {
@@ -58,35 +60,34 @@ function setupEventListeners() {
             if (window.fileContents[fileName]) {
                 openFileModal(fileName, window.fileContents[fileName]);
             }
-            return; // Stop further execution
+            return;
         }
 
         const editButton = e.target.closest('.edit-btn');
         if (editButton) {
             enterEditMode(editButton);
-            return; // Stop further execution
+            return;
         }
 
         const saveButton = e.target.closest('.save-btn');
         if (saveButton) {
             saveEdit(saveButton);
-            return; // Stop further execution
+            return;
         }
 
         const cancelButton = e.target.closest('.cancel-btn');
         if (cancelButton) {
             cancelEdit(cancelButton);
-            return; // Stop further execution
+            return;
         }
 
         const copyButton = e.target.closest('.copy-btn');
         if (copyButton) {
             const text = copyButton.closest('.message-content').querySelector('.message-text').textContent;
             copyToClipboard(text, copyButton);
-            return; // Stop further execution
+            return;
         }
     });
-    // --- MODIFICATION END ---
 
 
     // Modal listeners
@@ -225,7 +226,17 @@ function cancelEdit(cancelButton) {
 // --- Modal Functions ---
 function openFileModal(fileName, fileContent) {
     modalFileName.textContent = fileName;
+    
+    // --- MODIFICATION START ---
+    // First, set the HTML content by parsing the Markdown
     modalFileContent.innerHTML = marked.parse(fileContent);
+
+    // Then, explicitly tell highlight.js to find and style all code blocks within the modal
+    modalFileContent.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightElement(block);
+    });
+    // --- MODIFICATION END ---
+    
     fileModal.style.display = 'flex';
 }
 

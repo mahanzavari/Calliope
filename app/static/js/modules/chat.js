@@ -27,8 +27,8 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
 
     let finalMessage = message;
     const attachments = existingAttachments || [];
+    let uploadFailed = false; // --- MODIFICATION: Add flag to track failures
 
-    // --- Handle NEW file uploads ---
     if (hasFiles) {
         for (const file of files) {
             const result = await uploadFile(file);
@@ -36,12 +36,29 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
                 window.fileContents[result.filename] = result.content;
                 attachments.push({ name: result.filename });
             } else {
-                addMessageToUI('assistant', `Error uploading ${file.name}: ${result.error}`);
+                // --- MODIFICATION START: Handle the error gracefully ---
+                addMessageToUI('assistant', { isError: true, text: result.error });
+                uploadFailed = true;
+                // --- MODIFICATION END ---
             }
         }
     }
 
-    // --- Combine file content with the main message for the AI ---
+    // --- MODIFICATION START: Stop if any file upload failed ---
+    if (uploadFailed) {
+        // Clear only the file inputs, leave the user's text
+        if (fileUpload) fileUpload.value = '';
+        const filePreviewContainer = document.getElementById('filePreviewContainer');
+        if (filePreviewContainer) {
+            filePreviewContainer.innerHTML = '';
+            filePreviewContainer.style.display = 'none';
+        }
+        isProcessing = false;
+        document.getElementById('actionBtn').disabled = false;
+        return; // Exit the function
+    }
+    // --- MODIFICATION END ---
+
     if (attachments.length > 0) {
         let fileContentsForPrompt = "";
         attachments.forEach(att => {
@@ -53,16 +70,10 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
             finalMessage = `${fileContentsForPrompt}\n\n${message}`;
         }
     }
-
-    // Display the user's message bubble
-    const userContent = {
-        text: message,
-        attachments: attachments,
-        audio: hasAudio ? URL.createObjectURL(audioBlob) : null
-    };
+    
+    const userContent = { text: message, attachments, audio: hasAudio ? URL.createObjectURL(audioBlob) : null };
     addMessageToUI('user', userContent, false, quotedText);
 
-    // Clear inputs (only if it's a new message, not an edit)
     if (!existingAttachments) {
         document.getElementById('messageInput').value = '';
         if (fileUpload) fileUpload.value = '';
@@ -74,13 +85,12 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
         cancelAudioRecording();
         removeQuote();
     }
-
-    // Get AI response
+    
     try {
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: finalMessage, use_search: isSearchEnabled, quoted_text: quotedText })
+            body: JSON.stringify({ message: finalMessage, use_search: isSearchEnabled, quoted_text: quotedText, is_file_upload_message: attachments.length > 0 })
         });
 
         if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
@@ -113,7 +123,7 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
         }
     } catch (error) {
         console.error('Error sending message:', error);
-        addMessageToUI('assistant', `Sorry, I encountered an error: ${error.message}`);
+        addMessageToUI('assistant', { isError: true, text: `Sorry, I encountered an error: ${error.message}` });
     } finally {
         isProcessing = false;
         document.getElementById('actionBtn').disabled = false;
@@ -129,10 +139,6 @@ async function uploadFile(file) {
             body: formData,
             credentials: 'include'
         });
-        if (!response.ok) {
-            const errorText = await response.text();
-            return { success: false, error: `Server error: ${response.status} - ${errorText}` };
-        }
         return await response.json();
     } catch (error) {
         return { success: false, error: `Fetch failed: ${error.message}` };
@@ -142,6 +148,12 @@ async function uploadFile(file) {
 function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}-message`;
+    
+    // --- MODIFICATION START: Handle error message styling ---
+    if (content.isError) {
+        messageDiv.classList.add('error-bubble');
+    }
+    // --- MODIFICATION END ---
 
     const avatar = document.createElement('div');
     avatar.className = 'message-avatar';
@@ -150,9 +162,10 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
 
     const messageBodyWrapper = document.createElement('div');
     messageBodyWrapper.className = 'message-body';
-
+    
+    let hasAttachments = false;
     if (role === 'user') {
-        const hasAttachments = content.attachments && content.attachments.length > 0;
+        hasAttachments = content.attachments && content.attachments.length > 0;
         if (hasAttachments) {
             content.attachments.forEach(file => {
                 const attachmentEl = document.createElement('div');
@@ -160,11 +173,9 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
                 attachmentEl.dataset.filename = file.name;
                 attachmentEl.innerHTML = `<div class="file-attachment-icon"><i class="fas fa-file-alt"></i></div><div class="file-attachment-name">${file.name}</div>`;
                 messageBodyWrapper.appendChild(attachmentEl);
-            });
-            // Store attachment info on the dataset for editing
+});
             messageDiv.dataset.attachments = JSON.stringify(content.attachments);
         }
-        // Always store raw text for editing
         messageDiv.dataset.rawContent = content.text || '';
     }
 
@@ -182,7 +193,11 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     const textDiv = document.createElement('div');
     textDiv.className = 'message-text';
 
-    if (role === 'user') {
+    // --- MODIFICATION START: Render error text or normal content ---
+    if (content.isError) {
+        textDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>${content.text}</span>`;
+    } else if (role === 'user') {
+    // --- MODIFICATION END ---
         if (content.text) textDiv.innerHTML = marked.parse(content.text);
         if (content.audio) {
             const audioEl = document.createElement('audio');
@@ -193,12 +208,11 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     } else {
         textDiv.innerHTML = isStreaming ? `<div class="typing-indicator"><span></span><span></span><span></span></div>` : marked.parse(content);
     }
-
+    
     if (textDiv.innerHTML || isStreaming) {
-        contentDiv.insertBefore(textDiv, contentDiv.firstChild);
+       contentDiv.insertBefore(textDiv, contentDiv.firstChild);
     }
 
-    // Always add edit button to user messages that aren't streaming
     if (role === 'user' && !isStreaming) {
         const lastEditBtn = document.querySelector('.user-message .edit-btn');
         if (lastEditBtn) lastEditBtn.remove();
@@ -208,8 +222,8 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
         editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
         messageDiv.appendChild(editBtn);
     }
-
-    if (role === 'assistant' && !isStreaming && content) {
+    
+    if (role === 'assistant' && !isStreaming && !content.isError && content) {
         const actions = document.createElement('div');
         actions.className = 'message-actions';
         actions.innerHTML = `<button class="copy-btn" title="Copy to clipboard"><i class="fas fa-copy"></i> Copy</button>`;
@@ -219,7 +233,7 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     if (contentDiv.hasChildNodes()) {
         messageBodyWrapper.appendChild(contentDiv);
     }
-
+    
     messageDiv.appendChild(messageBodyWrapper);
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;

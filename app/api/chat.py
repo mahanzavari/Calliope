@@ -13,6 +13,12 @@ from datetime import datetime
 chat_bp = Blueprint('chat', __name__)
 chat_service = ChatService()
 
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'py', 'js', 'html', 'css', 'java', 'cpp', 'c'}
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 def allowed_file(filename):
     """Check if file extension is allowed"""
     ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'py', 'js', 'html', 'css', 'java', 'cpp', 'c'}
@@ -101,7 +107,11 @@ def upload_file():
         except Exception as e:
             return jsonify({"error": f"Error processing file: {str(e)}"}), 500
 
-    return jsonify({"error": "File type not allowed"}), 400
+    supported_files_str = ", ".join(sorted(list(ALLOWED_EXTENSIONS)))
+    return jsonify({
+        "success": False,
+        "error": f"File type not supported. Supported types are: {supported_files_str}"
+    }), 400
 
 @chat_bp.route('/chats', methods=['GET'])
 @login_required
