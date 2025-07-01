@@ -12,92 +12,111 @@
         <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     </head>
 <body>
-    <div class="main-content">
-        <div class="chat-container">
-            <div class="chat-header">
-                <div class="content-limiter">
-                    <div class="header-brand">
-                        <h1>Calliope AI</h1>
-                        <span class="status-indicator" id="statusIndicator">Online</span>
-                    </div>
+    <div class="app-container" id="appContainer">
+        
+        <button class="sidebar-toggle is-fixed" id="headerSidebarToggle" title="Pin Sidebar">
+            <i class="fas fa-bars"></i>
+        </button>
+        <button class="new-chat-btn is-fixed" id="newChatBtn">
+            <i class="fas fa-plus"></i>
+            <span class="btn-text">New Chat</span>
+        </button>
+
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+            </div>
             
-                    <div class="header-actions">
-                        <button class="search-toggle" id="searchToggle" title="Toggle Search Mode">
-                            <i class="fas fa-search"></i>
-                        </button>
-                        <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
-                            <i class="fas fa-moon"></i>
-                        </button>
-                        <div class="user-menu">
-                            <button class="user-btn" id="userBtn">
-                                <i class="fas fa-user"></i>
-                            </button>
-                            <div class="dropdown-menu" id="userDropdown">
-                                <a href="/dashboard">Dashboard</a>
-                                <a href="#" id="logoutBtn">Logout</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="chat-history-container" id="chatHistoryContainer">
             </div>
+        </div>
 
-            <div class="messages" id="messages">
-                <div class="welcome-message">
-                    <div class="welcome-icon">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <h2>Welcome to Calliope AI</h2>
-                    <p>I'm your intelligent AI assistant. I can help you with:</p>
-                    <ul>
-                        <li>Answering questions with my knowledge</li>
-                        <li>Searching the web for current information</li>
-                        <li>Analyzing code and images</li>
-                        <li>Providing detailed explanations</li>
-                    </ul>
-                    <p>Toggle the search button to enable web search, or let me decide when to search automatically!</p>
-                </div>
-            </div>
-
-            <div class="input-container-wrapper">
-                <div class="content-limiter">
-                    <div class="input-container">
-                        <div id="quoted-text-container" class="quoted-text-container" style="display: none;">
-                            <span id="quoted-text"></span>
-                            <button class="remove-quote-btn" onclick="removeQuote()">×</button>
+        <div class="main-content">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <div class="content-limiter">
+                        <div class="header-brand">
+                            <h1>Calliope AI</h1>
+                            <span class="status-indicator" id="statusIndicator">Online</span>
                         </div>
-                        
-                        <div class="input-wrapper">
-                            <label for="fileUpload" class="upload-btn" title="Upload file">
-                                <i class="fas fa-paperclip"></i>
-                            </label>
-                            <input type="file" id="fileUpload" style="display: none;" multiple>
-                        
-                            <div id="filePreviewContainer" class="preview-container" style="display: none;">
-                            </div>
-                            <div id="audioRecordingIndicator" class="audio-indicator" style="display: none;">
-                                <i class="fas fa-microphone" id="micRecordingIcon" style="color: red;"></i>
-                                <span id="recordingTimer">00:00</span>
-                                <button id="cancelAudioBtn" class="remove-preview-btn" title="Cancel audio">&times;</button>
-                            </div>
-                        
-                            <textarea 
-                                id="messageInput" 
-                                placeholder="Type your message..." 
-                                rows="1"
-                                maxlength="4000"
-                            ></textarea>
-                            <button id="actionBtn" class="action-btn state-mic" type="button">
-                                <i class="fas fa-microphone mic-icon"></i>
-                                <i class="fas fa-stop stop-icon"></i>
-                                <i class="fas fa-paper-plane send-icon"></i>
-                            </button>
-                        </div>
-                        
-                        <div class="input-footer">
-                            <span class="char-count" id="charCount">0/4000</span>
-                            <div class="search-status" id="searchStatus">
+                
+                        <div class="header-actions">
+                            <button class="search-toggle" id="searchToggle" title="Toggle Search Mode">
                                 <i class="fas fa-search"></i>
-                                <span>Auto-search enabled</span>
+                            </button>
+                            <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
+                                <i class="fas fa-moon"></i>
+                            </button>
+                            <div class="user-menu">
+                                <button class="user-btn" id="userBtn">
+                                    <i class="fas fa-user"></i>
+                                </button>
+                                <div class="dropdown-menu" id="userDropdown">
+                                    <a href="/dashboard">Dashboard</a>
+                                    <a href="#" id="logoutBtn">Logout</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="messages" id="messages">
+                    <div class="welcome-message">
+                        <div class="welcome-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h2>Welcome to Calliope AI</h2>
+                        <p>I'm your intelligent AI assistant. I can help you with:</p>
+                        <ul>
+                            <li>Answering questions with my knowledge</li>
+                            <li>Searching the web for current information</li>
+                            <li>Analyzing code and images</li>
+                            <li>Providing detailed explanations</li>
+                        </ul>
+                        <p>Toggle the search button to enable web search, or let me decide when to search automatically!</p>
+                    </div>
+                </div>
+
+                <div class="input-container-wrapper">
+                    <div class="content-limiter">
+                        <div class="input-container">
+                            <div id="quoted-text-container" class="quoted-text-container" style="display: none;">
+                                <span id="quoted-text"></span>
+                                <button class="remove-quote-btn" onclick="removeQuote()">×</button>
+                            </div>
+                            
+                            <div class="input-wrapper">
+                                <label for="fileUpload" class="upload-btn" title="Upload file">
+                                    <i class="fas fa-paperclip"></i>
+                                </label>
+                                <input type="file" id="fileUpload" style="display: none;" multiple>
+                            
+                                <div id="filePreviewContainer" class="preview-container" style="display: none;">
+                                </div>
+                                <div id="audioRecordingIndicator" class="audio-indicator" style="display: none;">
+                                    <i class="fas fa-microphone" id="micRecordingIcon" style="color: red;"></i>
+                                    <span id="recordingTimer">00:00</span>
+                                    <button id="cancelAudioBtn" class="remove-preview-btn" title="Cancel audio">&times;</button>
+                                </div>
+                            
+                                <textarea 
+                                    id="messageInput" 
+                                    placeholder="Ask Calliope" 
+                                    rows="1"
+                                    maxlength="4000"
+                                ></textarea>
+                                <button id="actionBtn" class="action-btn state-mic" type="button">
+                                    <i class="fas fa-microphone mic-icon"></i>
+                                    <i class="fas fa-stop stop-icon"></i>
+                                    <i class="fas fa-paper-plane send-icon"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="input-footer">
+                                <span class="char-count" id="charCount">0/4000</span>
+                                <div class="search-status" id="searchStatus">
+                                    <i class="fas fa-search"></i>
+                                    <span>Auto-search enabled</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -106,14 +125,6 @@
         </div>
     </div>
 
-    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-        <div class="loading-spinner">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Processing...</p>
-        </div>
-    </div>
-
-    <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
     <div class="loading-overlay" id="loadingOverlay" style="display: none;">
         <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
@@ -134,7 +145,5 @@
     </div>
 
     <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
-</html>
 </body>
 </html>

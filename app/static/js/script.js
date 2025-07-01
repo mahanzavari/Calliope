@@ -3,6 +3,7 @@ import { toggleTheme, loadTheme, toggleUserDropdown, handleLogout, handleFileSel
 import { toggleRecognition, getIsRecognizing } from './modules/stt.js'; // Import the new STT module
 import { handleTextSelection } from './modules/quote.js';
 import { sendMessage } from './modules/chat.js';
+import { initializeChatHistory } from './modules/history.js';
 
 // --- DOM Elements ---
 const messageInput = document.getElementById('messageInput');
@@ -27,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
     setupEventListeners();
     updateActionButtonState();
+    initializeChatHistory();
     marked.setOptions({
         highlight: function(code, lang) {
             const language = hljs.getLanguage(lang) ? lang : 'plaintext';
