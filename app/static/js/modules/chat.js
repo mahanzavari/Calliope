@@ -2,15 +2,11 @@ import { audioBlob, cancelAudioRecording } from './audio.js';
 import { removeFilePreview } from './ui.js';
 import { quotedText, removeQuote } from './quote.js';
 
-// --- DOM Elements ---
 const messagesContainer = document.getElementById('messages');
 const fileUpload = document.getElementById('fileUpload');
-
-// --- State ---
 let isProcessing = false;
-window.fileContents = {}; // Global store for file contents to show in modal
+window.fileContents = {};
 
-// --- Functions ---
 export async function sendMessage(message, isSearchEnabled, files, existingAttachments = null) {
     if (isProcessing) return;
     const hasAudio = audioBlob != null;
@@ -23,11 +19,11 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
     if (welcomeMessage) welcomeMessage.remove();
 
     isProcessing = true;
-    document.getElementById('actionBtn').disabled = true;
+    document.getElementById('actionBtn').disabled = false;
 
     let finalMessage = message;
     const attachments = existingAttachments || [];
-    let uploadFailed = false; // --- MODIFICATION: Add flag to track failures
+    let uploadFailed = false;
 
     if (hasFiles) {
         for (const file of files) {
@@ -36,17 +32,13 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
                 window.fileContents[result.filename] = result.content;
                 attachments.push({ name: result.filename });
             } else {
-                // --- MODIFICATION START: Handle the error gracefully ---
                 addMessageToUI('assistant', { isError: true, text: result.error });
                 uploadFailed = true;
-                // --- MODIFICATION END ---
             }
         }
     }
 
-    // --- MODIFICATION START: Stop if any file upload failed ---
     if (uploadFailed) {
-        // Clear only the file inputs, leave the user's text
         if (fileUpload) fileUpload.value = '';
         const filePreviewContainer = document.getElementById('filePreviewContainer');
         if (filePreviewContainer) {
@@ -55,9 +47,8 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
         }
         isProcessing = false;
         document.getElementById('actionBtn').disabled = false;
-        return; // Exit the function
+        return;
     }
-    // --- MODIFICATION END ---
 
     if (attachments.length > 0) {
         let fileContentsForPrompt = "";
@@ -94,7 +85,7 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
         });
 
         if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
-        if (!response.body) throw new Error("ReadableStream not supported or response has no body.");
+        if (!response.body) throw new Error("ReadableStream not supported.");
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -121,6 +112,28 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
                 }
             }
         }
+        
+        botTextDiv.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+
+        botTextDiv.querySelectorAll('pre').forEach(pre => {
+            const codeCopyBtn = document.createElement('button');
+            codeCopyBtn.className = 'copy-code-btn';
+            codeCopyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+            pre.appendChild(codeCopyBtn);
+        });
+        
+        const fullCopyBtn = document.createElement('button');
+        fullCopyBtn.className = 'copy-full-btn';
+        fullCopyBtn.title = 'Copy full message';
+        fullCopyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+        
+        const actionsContainer = botMessageDiv.querySelector('.message-actions');
+        if (actionsContainer) {
+            actionsContainer.appendChild(fullCopyBtn);
+        }
+        
     } catch (error) {
         console.error('Error sending message:', error);
         addMessageToUI('assistant', { isError: true, text: `Sorry, I encountered an error: ${error.message}` });
@@ -149,11 +162,14 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}-message`;
     
-    // --- MODIFICATION START: Handle error message styling ---
     if (content.isError) {
         messageDiv.classList.add('error-bubble');
     }
-    // --- MODIFICATION END ---
+
+    const avatar = document.createElement('div');
+    avatar.className = 'message-avatar';
+    avatar.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+    messageDiv.appendChild(avatar);
 
     const messageBodyWrapper = document.createElement('div');
     messageBodyWrapper.className = 'message-body';
@@ -168,7 +184,7 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
                 attachmentEl.dataset.filename = file.name;
                 attachmentEl.innerHTML = `<div class="file-attachment-icon"><i class="fas fa-file-alt"></i></div><div class="file-attachment-name">${file.name}</div>`;
                 messageBodyWrapper.appendChild(attachmentEl);
-});
+            });
             messageDiv.dataset.attachments = JSON.stringify(content.attachments);
         }
         messageDiv.dataset.rawContent = content.text || '';
@@ -188,11 +204,9 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     const textDiv = document.createElement('div');
     textDiv.className = 'message-text';
 
-    // --- MODIFICATION START: Render error text or normal content ---
     if (content.isError) {
         textDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>${content.text}</span>`;
     } else if (role === 'user') {
-    // --- MODIFICATION END ---
         if (content.text) textDiv.innerHTML = marked.parse(content.text);
         if (content.audio) {
             const audioEl = document.createElement('audio');
@@ -218,16 +232,18 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
         messageDiv.appendChild(editBtn);
     }
     
-    if (role === 'assistant' && !isStreaming && !content.isError && content) {
-        const actions = document.createElement('div');
-        actions.className = 'message-actions';
-        actions.innerHTML = `<button class="copy-btn" title="Copy to clipboard"><i class="fas fa-copy"></i> Copy</button>`;
-        contentDiv.appendChild(actions);
-    }
-
+    // --- MODIFICATION START ---
     if (contentDiv.hasChildNodes()) {
         messageBodyWrapper.appendChild(contentDiv);
     }
+
+    // Create and append the actions container inside the body wrapper for assistant messages
+    if (role === 'assistant') {
+        const actions = document.createElement('div');
+        actions.className = 'message-actions';
+        messageBodyWrapper.appendChild(actions);
+    }
+    // --- MODIFICATION END ---
     
     messageDiv.appendChild(messageBodyWrapper);
     messagesContainer.appendChild(messageDiv);

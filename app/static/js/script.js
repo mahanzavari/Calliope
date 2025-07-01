@@ -14,8 +14,6 @@ const userBtn = document.getElementById('userBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const fileUpload = document.getElementById('fileUpload');
 const filePreviewContainer = document.getElementById('filePreviewContainer');
-
-// Modal Elements
 const fileModal = document.getElementById('fileModal');
 const modalFileName = document.getElementById('modalFileName');
 const modalFileContent = document.getElementById('modalFileContent');
@@ -29,14 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
     setupEventListeners();
     updateActionButtonState();
-
-    // Configure marked.js to use highlight.js for syntax highlighting
     marked.setOptions({
         highlight: function(code, lang) {
             const language = hljs.getLanguage(lang) ? lang : 'plaintext';
             return hljs.highlight(code, { language }).value;
         },
-        langPrefix: 'hljs language-' // Use 'hljs' class prefix for compatibility
+        langPrefix: 'hljs language-'
     });
 });
 
@@ -57,9 +53,7 @@ function setupEventListeners() {
         const attachment = e.target.closest('.file-attachment');
         if (attachment) {
             const fileName = attachment.dataset.filename;
-            if (window.fileContents[fileName]) {
-                openFileModal(fileName, window.fileContents[fileName]);
-            }
+            if (window.fileContents[fileName]) openFileModal(fileName, window.fileContents[fileName]);
             return;
         }
 
@@ -81,45 +75,34 @@ function setupEventListeners() {
             return;
         }
 
-        const copyButton = e.target.closest('.copy-btn');
-        if (copyButton) {
-            const text = copyButton.closest('.message-content').querySelector('.message-text').textContent;
-            copyToClipboard(text, copyButton);
+        const codeCopyBtn = e.target.closest('.copy-code-btn');
+        if (codeCopyBtn) {
+            const codeEl = codeCopyBtn.previousElementSibling;
+            if (codeEl) copyToClipboard(codeEl.textContent, codeCopyBtn);
+            return;
+        }
+
+        const fullCopyBtn = e.target.closest('.copy-full-btn');
+        if (fullCopyBtn) {
+            const messageText = fullCopyBtn.closest('.assistant-message').querySelector('.message-text');
+            if (messageText) copyToClipboard(messageText.textContent, fullCopyBtn);
             return;
         }
     });
 
-
-    // Modal listeners
     modalCloseBtn.addEventListener('click', closeFileModal);
-    fileModal.addEventListener('click', e => {
-        if (e.target === fileModal) {
-            closeFileModal();
-        }
-    });
-
-    // UI Listeners
+    fileModal.addEventListener('click', e => { if (e.target === fileModal) closeFileModal(); });
     searchToggle.addEventListener('click', toggleSearch);
     themeToggle.addEventListener('click', toggleTheme);
     userBtn.addEventListener('click', toggleUserDropdown);
     logoutBtn.addEventListener('click', handleLogout);
     fileUpload.addEventListener('change', handleFileSelected);
-
-    filePreviewContainer.addEventListener('click', e => {
-        if (e.target.classList.contains('remove-file-btn')) {
-            removeFilePreview(e.target.dataset.filename);
-        }
-    });
-
+    filePreviewContainer.addEventListener('click', e => { if (e.target.classList.contains('remove-file-btn')) removeFilePreview(e.target.dataset.filename); });
     document.addEventListener('click', e => {
         const userDropdown = document.getElementById('userDropdown');
-        if (userDropdown && !userBtn.contains(e.target) && !userDropdown.contains(e.target)) {
-            userDropdown.classList.remove('show');
-        }
+        if (userDropdown && !userBtn.contains(e.target) && !userDropdown.contains(e.target)) userDropdown.classList.remove('show');
         const quotePopup = document.querySelector('.quote-popup');
-        if (quotePopup && !quotePopup.contains(e.target)) {
-            quotePopup.remove();
-        }
+        if (quotePopup && !quotePopup.contains(e.target)) quotePopup.remove();
     });
 }
 
@@ -158,7 +141,6 @@ function toggleSearch() {
     statusText.parentElement.style.color = searchModeEnabled ? 'var(--accent-color)' : 'var(--text-muted)';
 }
 
-
 // --- Edit Functions ---
 function enterEditMode(editButton) {
     const userMessage = editButton.closest('.user-message');
@@ -177,7 +159,7 @@ function enterEditMode(editButton) {
             <button class="save-btn">Save</button>
         </div>
     `;
-    
+
     const messageBody = userMessage.querySelector('.message-body');
     if (messageContent) {
         messageContent.after(editArea);
@@ -200,7 +182,7 @@ function saveEdit(saveButton) {
         if (nextMessage && nextMessage.classList.contains('assistant-message')) {
             nextMessage.remove();
         }
-        
+
         userMessage.remove();
         sendMessage(newText, searchModeEnabled, null, existingAttachments);
     }
@@ -209,11 +191,11 @@ function saveEdit(saveButton) {
 function exitEditMode(editArea) {
     const userMessage = editArea.closest('.user-message');
     const messageContent = userMessage.querySelector('.message-content');
-    
+
     if (messageContent) messageContent.style.display = '';
     const editButton = userMessage.querySelector('.edit-btn');
-    if(editButton) editButton.style.display = 'flex';
-    
+    if (editButton) editButton.style.display = 'flex';
+
     editArea.remove();
 }
 
@@ -222,21 +204,13 @@ function cancelEdit(cancelButton) {
     exitEditMode(editArea);
 }
 
-
 // --- Modal Functions ---
 function openFileModal(fileName, fileContent) {
     modalFileName.textContent = fileName;
-    
-    // --- MODIFICATION START ---
-    // First, set the HTML content by parsing the Markdown
     modalFileContent.innerHTML = marked.parse(fileContent);
-
-    // Then, explicitly tell highlight.js to find and style all code blocks within the modal
     modalFileContent.querySelectorAll('pre code').forEach((block) => {
         hljs.highlightElement(block);
     });
-    // --- MODIFICATION END ---
-    
     fileModal.style.display = 'flex';
 }
 
