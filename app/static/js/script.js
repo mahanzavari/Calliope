@@ -1,8 +1,7 @@
-// --- Import Modules ---
 import { toggleTheme, loadTheme, toggleUserDropdown, handleLogout, handleFileSelected, removeFilePreview, setupAutoResize, updateCharCount, copyToClipboard } from './modules/ui.js';
-import { toggleRecognition, getIsRecognizing } from './modules/stt.js'; // Import the new STT module
+import { toggleRecognition, getIsRecognizing } from './modules/stt.js';
 import { handleTextSelection } from './modules/quote.js';
-import { sendMessage } from './modules/chat.js';
+import { sendMessage, cancelCurrentRequest, getIsProcessing } from './modules/chat.js';
 import { initializeChatHistory } from './modules/history.js';
 
 // --- DOM Elements ---
@@ -112,47 +111,46 @@ function setupEventListeners() {
 function handleKeyPress(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        if (!actionBtn.disabled) {
-            sendMessage(messageInput.value.trim(), searchModeEnabled, fileUpload.files);
-            updateActionButtonState();
+        if (actionBtn.classList.contains('state-send')) {
+            sendMessage(messageInput.value.trim(), searchModeEnabled, fileUpload.files, null, updateActionButtonState);
         }
     }
 }
 
 /**
  * MODIFIED FUNCTION
- * This function now handles the new STT functionality.
+ * This function now handles sending, speech-to-text, AND cancelling the response.
  */
 function handleActionButton() {
-    if (actionBtn.classList.contains('state-send')) {
-        sendMessage(messageInput.value.trim(), searchModeEnabled, fileUpload.files);
-        updateActionButtonState();
+    if (actionBtn.classList.contains('state-cancel')) {
+        cancelCurrentRequest();
+    } else if (actionBtn.classList.contains('state-send')) {
+        sendMessage(messageInput.value.trim(), searchModeEnabled, fileUpload.files, null, updateActionButtonState);
     } else {
-        // This now toggles the speech-to-text recognition.
         toggleRecognition(updateActionButtonState);
     }
 }
 
 /**
  * MODIFIED FUNCTION
- * This function now also checks the state of the STT to update the button's appearance.
+ * This function now checks all states: STT, processing, and input content.
  */
 function updateActionButtonState() {
     const hasText = messageInput.value.trim().length > 0;
     const hasFiles = fileUpload.files.length > 0;
     const isRecognizing = getIsRecognizing ? getIsRecognizing() : false;
+    const isProcessing = getIsProcessing ? getIsProcessing() : false;
 
-    // Remove all state classes before applying the correct one.
-    actionBtn.classList.remove('state-mic', 'state-stop', 'state-send');
+    actionBtn.classList.remove('state-mic', 'state-stop', 'state-send', 'state-cancel');
+    actionBtn.disabled = false; // The button is almost always active for some purpose.
 
     if (isRecognizing) {
-        // State 1: Actively recording -> show STOP icon.
         actionBtn.classList.add('state-stop');
+    } else if (isProcessing) {
+        actionBtn.classList.add('state-cancel');
     } else if (hasText || hasFiles) {
-        // State 2: Not recording, but has content -> show SEND icon.
         actionBtn.classList.add('state-send');
     } else {
-        // State 3: Not recording and no content -> show MIC icon.
         actionBtn.classList.add('state-mic');
     }
 }
@@ -208,7 +206,7 @@ function saveEdit(saveButton) {
         }
 
         userMessage.remove();
-        sendMessage(newText, searchModeEnabled, null, existingAttachments);
+        sendMessage(newText, searchModeEnabled, null, existingAttachments, updateActionButtonState);
     }
 }
 

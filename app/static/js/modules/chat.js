@@ -1,25 +1,29 @@
 import { audioBlob, cancelAudioRecording } from './audio.js';
 import { removeFilePreview } from './ui.js';
 import { quotedText, removeQuote } from './quote.js';
-import { setActiveChatId } from './history.js';
+import { setActiveChatId, updateChatTitleInList } from './history.js';
 
 const messagesContainer = document.getElementById('messages');
 const fileUpload = document.getElementById('fileUpload');
-let isProcessing = false;
 window.fileContents = {};
 
-// We will use a local variable to track the current chat ID.
-// It gets updated when a new chat is created or a chat is loaded.
 let currentChatId = null;
+let isProcessing = false;
+let abortController = null;
 
-// New exported function to keep chat state in sync with history module.
-// This should be called from history.js when the chat context changes.
+export const getIsProcessing = () => isProcessing;
+export function cancelCurrentRequest() {
+    if (abortController) {
+        abortController.abort();
+        abortController = null;
+    }
+}
+
 export function setCurrentChatId(chatId) {
     currentChatId = chatId;
 }
 
-
-export async function sendMessage(message, isSearchEnabled, files, existingAttachments = null) {
+export async function sendMessage(message, isSearchEnabled, files, existingAttachments = null, onStateChangeCallback) {
     if (isProcessing) return;
     const hasAudio = audioBlob != null;
     const hasFiles = files && files.length > 0;
@@ -31,8 +35,9 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
     if (welcomeMessage) welcomeMessage.remove();
 
     isProcessing = true;
-    // FIX: Correctly disable the button while processing.
-    document.getElementById('actionBtn').disabled = true;
+    if (onStateChangeCallback) onStateChangeCallback();
+
+    abortController = new AbortController();
 
     let finalMessage = message;
     const attachments = existingAttachments || [];
@@ -59,7 +64,7 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
             filePreviewContainer.style.display = 'none';
         }
         isProcessing = false;
-        document.getElementById('actionBtn').disabled = false;
+        if (onStateChangeCallback) onStateChangeCallback();
         return;
     }
 
@@ -88,10 +93,13 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
         }
         cancelAudioRecording();
         removeQuote();
-        // Manually trigger input event to update button state
         document.getElementById('messageInput').dispatchEvent(new Event('input'));
     }
     
+    const botMessageDiv = addMessageToUI('assistant', '', true);
+    const botTextDiv = botMessageDiv.querySelector('.message-text');
+    let accumulatedResponse = "";
+
     try {
         const response = await fetch('/api/chat', {
             method: 'POST',
@@ -102,7 +110,8 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
                 quoted_text: quotedText, 
                 chat_id: currentChatId, 
                 is_file_upload_message: attachments.length > 0 
-            })
+            }),
+            signal: abortController.signal
         });
 
         if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
@@ -110,11 +119,7 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        const botMessageDiv = addMessageToUI('assistant', '', true);
-        const botTextDiv = botMessageDiv.querySelector('.message-text');
-        let accumulatedResponse = "";
 
-        // FIX: Replaced the entire stream processing logic with the correct version.
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -132,24 +137,24 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
                         
                         switch (data.type) {
                             case 'chat_info':
-                                // If this is a new chat, the backend gives us the ID.
-                                // We update our state and the history module.
                                 if (data.chat_id && !currentChatId) {
                                     currentChatId = data.chat_id;
                                     setActiveChatId(data.chat_id);
                                 }
                                 break;
                             case 'response_chunk':
-                                // Clear the initial typing indicator once the first text arrives.
                                 if (botTextDiv.querySelector('.typing-indicator')) {
                                     botTextDiv.innerHTML = ''; 
                                 }
                                 accumulatedResponse += data.content;
-                                botTextDiv.innerHTML = marked.parse(accumulatedResponse);
+                                botTextDiv.textContent = accumulatedResponse;
+                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                break;
+                            case 'title_update':
+                                updateChatTitleInList(data.chat_id, data.title);
                                 break;
                             case 'error':
                                 botTextDiv.innerHTML = `<div class="error-message">${data.message}</div>`;
-                                // End the stream processing on a fatal error.
                                 throw new Error(data.message);
                         }
                     } catch (e) {
@@ -159,7 +164,8 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
             }
         }
         
-        // Post-processing should happen *after* the stream is complete.
+        botTextDiv.innerHTML = marked.parse(accumulatedResponse);
+        
         botTextDiv.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightElement(block);
         });
@@ -182,12 +188,21 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
         }
         
     } catch (error) {
-        console.error('Error sending message:', error);
-        addMessageToUI('assistant', { isError: true, text: `Sorry, I encountered an error: ${error.message}` });
+        if (error.name === 'AbortError') {
+            console.log('Fetch aborted by user.');
+            if (accumulatedResponse) {
+                 botTextDiv.innerHTML = marked.parse(accumulatedResponse + "\n\n*Response cancelled by user.*");
+            } else {
+                 botTextDiv.innerHTML = "<em>Response cancelled by user.</em>";
+            }
+        } else {
+            console.error('Error sending message:', error);
+            botTextDiv.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-triangle"></i><span>Sorry, I encountered an error: ${error.message}</span></div>`
+        }
     } finally {
         isProcessing = false;
-        // FIX: Correctly re-enable the button.
-        document.getElementById('actionBtn').disabled = false;
+        abortController = null;
+        if (onStateChangeCallback) onStateChangeCallback();
     }
 }
 
@@ -206,7 +221,8 @@ async function uploadFile(file) {
     }
 }
 
-function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
+// FIX: Export this function so history.js can use it.
+export function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}-message`;
     
@@ -250,6 +266,7 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     if (content.isError) {
         textDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>${content.text}</span>`;
     } else if (role === 'user') {
+        // For loaded user messages, content is an object { text: '...' }
         if (content.text) textDiv.innerHTML = marked.parse(content.text);
         if (content.audio) {
             const audioEl = document.createElement('audio');
@@ -258,6 +275,7 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
             contentDiv.appendChild(audioEl);
         }
     } else {
+        // For assistant messages, content is just a string
         textDiv.innerHTML = isStreaming ? `<div class="typing-indicator"><span></span><span></span><span></span></div>` : marked.parse(content);
     }
     
@@ -266,13 +284,8 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     }
 
     if (role === 'user' && !isStreaming) {
-        const lastEditBtn = document.querySelector('.user-message .edit-btn');
-        if (lastEditBtn) lastEditBtn.remove();
-        const editBtn = document.createElement('button');
-        editBtn.className = 'edit-btn';
-        editBtn.title = 'Edit message';
-        editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-        messageDiv.appendChild(editBtn);
+        // Don't add edit button to old messages for now to keep it simple,
+        // but you could add a condition here to show it on the last user message.
     }
     
     if (contentDiv.hasChildNodes()) {
@@ -282,11 +295,34 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     if (role === 'assistant') {
         const actions = document.createElement('div');
         actions.className = 'message-actions';
+        // Add copy buttons etc. to loaded messages too
+        const fullCopyBtn = document.createElement('button');
+        fullCopyBtn.className = 'copy-full-btn';
+        fullCopyBtn.title = 'Copy full message';
+        fullCopyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+        actions.appendChild(fullCopyBtn);
+
         messageBodyWrapper.appendChild(actions);
     }
     
     messageDiv.appendChild(messageBodyWrapper);
     messagesContainer.appendChild(messageDiv);
+    
+    // Final post-processing for non-streaming messages
+    if (!isStreaming) {
+        textDiv.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+        textDiv.querySelectorAll('pre').forEach(pre => {
+             if (!pre.querySelector('.copy-code-btn')) { // Avoid adding duplicate buttons
+                const codeCopyBtn = document.createElement('button');
+                codeCopyBtn.className = 'copy-code-btn';
+                codeCopyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                pre.appendChild(codeCopyBtn);
+            }
+        });
+    }
+
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     return messageDiv;
 }
