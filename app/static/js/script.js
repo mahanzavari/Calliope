@@ -1,6 +1,6 @@
 // --- Import Modules ---
 import { toggleTheme, loadTheme, toggleUserDropdown, handleLogout, handleFileSelected, removeFilePreview, setupAutoResize, updateCharCount, copyToClipboard } from './modules/ui.js';
-import { startAudioRecording, stopAudioRecording, isRecording } from './modules/audio.js';
+import { toggleRecognition, getIsRecognizing } from './modules/stt.js'; // Import the new STT module
 import { handleTextSelection } from './modules/quote.js';
 import { sendMessage } from './modules/chat.js';
 
@@ -117,20 +117,42 @@ function handleKeyPress(e) {
     }
 }
 
+/**
+ * MODIFIED FUNCTION
+ * This function now handles the new STT functionality.
+ */
 function handleActionButton() {
     if (actionBtn.classList.contains('state-send')) {
         sendMessage(messageInput.value.trim(), searchModeEnabled, fileUpload.files);
         updateActionButtonState();
     } else {
-        isRecording() ? stopAudioRecording() : startAudioRecording();
+        // This now toggles the speech-to-text recognition.
+        toggleRecognition(updateActionButtonState);
     }
 }
 
+/**
+ * MODIFIED FUNCTION
+ * This function now also checks the state of the STT to update the button's appearance.
+ */
 function updateActionButtonState() {
     const hasText = messageInput.value.trim().length > 0;
     const hasFiles = fileUpload.files.length > 0;
-    actionBtn.classList.toggle('state-send', hasText || hasFiles);
-    actionBtn.classList.toggle('state-mic', !hasText && !hasFiles);
+    const isRecognizing = getIsRecognizing ? getIsRecognizing() : false;
+
+    // Remove all state classes before applying the correct one.
+    actionBtn.classList.remove('state-mic', 'state-stop', 'state-send');
+
+    if (isRecognizing) {
+        // State 1: Actively recording -> show STOP icon.
+        actionBtn.classList.add('state-stop');
+    } else if (hasText || hasFiles) {
+        // State 2: Not recording, but has content -> show SEND icon.
+        actionBtn.classList.add('state-send');
+    } else {
+        // State 3: Not recording and no content -> show MIC icon.
+        actionBtn.classList.add('state-mic');
+    }
 }
 
 function toggleSearch() {

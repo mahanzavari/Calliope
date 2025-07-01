@@ -7,3 +7,24 @@
 @import url("./components/_messages.css");
 @import url("./components/_input.css");
 @import url("./components/_indicators.css");
+
+.action-btn .mic-icon,
+.action-btn .stop-icon,
+.action-btn .send-icon {
+    display: none;
+}
+
+/* Show the correct icon based on the button's state class */
+.action-btn.state-mic .mic-icon {
+    display: block;
+}
+
+.action-btn.state-stop .stop-icon {
+    display: block;
+    color: var(--error-color); /* Make the stop icon red for clarity */
+    font-size: 0.9em; /* Stop icon can be a bit smaller */
+}
+
+.action-btn.state-send .send-icon {
+    display: block;
+}
