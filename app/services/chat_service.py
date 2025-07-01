@@ -1,4 +1,5 @@
 import os
+import logging 
 from typing import Generator
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -6,9 +7,11 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from .rag_service import RAGService
 
+# --- MODIFICATION: Set up a basic logger ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 class ChatService:
     def __init__(self):
-        # --- MODIFICATION: Removed the incorrect 'streaming=True' argument ---
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash",
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
@@ -67,28 +70,36 @@ class ChatService:
             | StrOutputParser()
         )
 
+    # --- MODIFICATION START ---
     def get_response(self, query: str, use_rag: bool = False) -> Generator[str, None, None]:
         """
-        Get a streaming response from the AI system using native LangChain streaming.
+        Get a streaming response from the AI system with robust error handling.
         """
         try:
             chain_input = {"query": query}
+            chain = None
 
             if use_rag:
-                rag_chain = self._create_rag_chain()
-                yield from rag_chain.stream(chain_input)
+                chain = self._create_rag_chain()
             else:
                 confidence_chain = self._create_confidence_check_chain()
                 confidence_response = confidence_chain.invoke(chain_input).strip().lower()
 
                 if "no" in confidence_response:
-                    direct_answer_chain = self._create_direct_answer_chain()
-                    yield from direct_answer_chain.stream(chain_input)
+                    chain = self._create_direct_answer_chain()
                 else:
-                    rag_chain = self._create_rag_chain()
-                    yield from rag_chain.stream(chain_input)
+                    chain = self._create_rag_chain()
+
+            yield from chain.stream(chain_input)
+
         except Exception as e:
-            yield f"I apologize, but I encountered an error: {str(e)}"
+            # Log the full, detailed error to the server console for debugging.
+            logging.error(f"An unexpected error occurred in ChatService: {e}", exc_info=True)
+            
+            # Yield a generic, user-friendly error message.
+            yield "I apologize, but I encountered an unexpected error. Please try again."
+    # --- MODIFICATION END ---
+
 
     def process_file_content(self, file_content: str, file_type: str) -> str:
         """Process uploaded file content and return context, formatted for Markdown."""
