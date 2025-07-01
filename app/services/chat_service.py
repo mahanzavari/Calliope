@@ -1,5 +1,6 @@
 import os
-import logging 
+import logging
+import time  # Import the time module
 from typing import Generator
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -7,7 +8,6 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from .rag_service import RAGService
 
-# --- MODIFICATION: Set up a basic logger ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class ChatService:
@@ -39,6 +39,12 @@ class ChatService:
             """You are a helpful AI assistant. Answer the following query based on your knowledge.
             If you're not sure about something, say so clearly.
 
+            When providing code examples, always enclose them in triple backticks with the language name.
+            For example:
+            ```python
+            print("Hello, World!")
+            ```
+
             Query: {query}
 
             Answer:"""
@@ -51,6 +57,12 @@ class ChatService:
             """Based on the following search results and your knowledge, answer the user's query.
             If the search results are not relevant or insufficient, rely on your knowledge.
             Always cite sources when using information from the search results.
+            
+            When providing code examples, always enclose them in triple backticks with the language name.
+            For example:
+            ```javascript
+            console.log("Hello, World!");
+            ```
 
             Search Results:
             {context}
@@ -73,7 +85,7 @@ class ChatService:
     # --- MODIFICATION START ---
     def get_response(self, query: str, use_rag: bool = False) -> Generator[str, None, None]:
         """
-        Get a streaming response from the AI system with robust error handling.
+        Get a smooth, character-by-character streaming response from the AI system.
         """
         try:
             chain_input = {"query": query}
@@ -90,13 +102,18 @@ class ChatService:
                 else:
                     chain = self._create_rag_chain()
 
-            yield from chain.stream(chain_input)
+            # This inner function will smooth out the stream from the chain.
+            def smooth_stream(generator: Generator[str, None, None]) -> Generator[str, None, None]:
+                for chunk in generator:
+                    for char in chunk:
+                        yield char
+                        time.sleep(0.005) # A very small delay between characters
+
+            # Yield from the smoother generator
+            yield from smooth_stream(chain.stream(chain_input))
 
         except Exception as e:
-            # Log the full, detailed error to the server console for debugging.
             logging.error(f"An unexpected error occurred in ChatService: {e}", exc_info=True)
-            
-            # Yield a generic, user-friendly error message.
             yield "I apologize, but I encountered an unexpected error. Please try again."
     # --- MODIFICATION END ---
 

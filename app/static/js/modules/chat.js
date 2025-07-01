@@ -155,11 +155,6 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     }
     // --- MODIFICATION END ---
 
-    const avatar = document.createElement('div');
-    avatar.className = 'message-avatar';
-    avatar.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
-    messageDiv.appendChild(avatar);
-
     const messageBodyWrapper = document.createElement('div');
     messageBodyWrapper.className = 'message-body';
     
