@@ -1,5 +1,5 @@
 // --- Import Modules ---
-import { toggleTheme, loadTheme, toggleUserDropdown, handleLogout, handleImageSelected, setupAutoResize, updateCharCount, copyToClipboard } from './modules/ui.js';
+import { toggleTheme, loadTheme, toggleUserDropdown, handleLogout, handleFileSelected, removeFilePreview, setupAutoResize, updateCharCount, copyToClipboard } from './modules/ui.js';
 import { startAudioRecording, stopAudioRecording, isRecording } from './modules/audio.js';
 import { handleTextSelection } from './modules/quote.js';
 import { sendMessage } from './modules/chat.js';
@@ -12,7 +12,14 @@ const searchToggle = document.getElementById('searchToggle');
 const themeToggle = document.getElementById('themeToggle');
 const userBtn = document.getElementById('userBtn');
 const logoutBtn = document.getElementById('logoutBtn');
-const imageUpload = document.getElementById('imageUpload');
+const fileUpload = document.getElementById('fileUpload');
+const filePreviewContainer = document.getElementById('filePreviewContainer');
+
+// Modal Elements
+const fileModal = document.getElementById('fileModal');
+const modalFileName = document.getElementById('modalFileName');
+const modalFileContent = document.getElementById('modalFileContent');
+const modalCloseBtn = document.getElementById('modalCloseBtn');
 
 // --- State ---
 let searchModeEnabled = false;
@@ -22,6 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
     setupEventListeners();
     updateActionButtonState();
+    marked.setOptions({
+        highlight: function(code, lang) {
+            const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+            return hljs.highlight(code, { language }).value;
+        },
+        langPrefix: 'hljs language-'
+    });
 });
 
 // --- Event Listeners ---
@@ -36,26 +50,50 @@ function setupEventListeners() {
     actionBtn.addEventListener('click', handleActionButton);
     messagesContainer.addEventListener('mouseup', handleTextSelection);
 
+    // --- MODIFICATION START: Consolidated Event Listener ---
     messagesContainer.addEventListener('click', e => {
-        const copyButton = e.target.closest('.copy-btn');
-        if (copyButton) {
-            const text = copyButton.closest('.message-content').querySelector('.message-text').textContent;
-            copyToClipboard(text, copyButton);
+        const attachment = e.target.closest('.file-attachment');
+        if (attachment) {
+            const fileName = attachment.dataset.filename;
+            if (window.fileContents[fileName]) {
+                openFileModal(fileName, window.fileContents[fileName]);
+            }
+            return; // Stop further execution
         }
 
         const editButton = e.target.closest('.edit-btn');
         if (editButton) {
             enterEditMode(editButton);
+            return; // Stop further execution
         }
 
         const saveButton = e.target.closest('.save-btn');
         if (saveButton) {
             saveEdit(saveButton);
+            return; // Stop further execution
         }
 
         const cancelButton = e.target.closest('.cancel-btn');
         if (cancelButton) {
             cancelEdit(cancelButton);
+            return; // Stop further execution
+        }
+
+        const copyButton = e.target.closest('.copy-btn');
+        if (copyButton) {
+            const text = copyButton.closest('.message-content').querySelector('.message-text').textContent;
+            copyToClipboard(text, copyButton);
+            return; // Stop further execution
+        }
+    });
+    // --- MODIFICATION END ---
+
+
+    // Modal listeners
+    modalCloseBtn.addEventListener('click', closeFileModal);
+    fileModal.addEventListener('click', e => {
+        if (e.target === fileModal) {
+            closeFileModal();
         }
     });
 
@@ -64,7 +102,13 @@ function setupEventListeners() {
     themeToggle.addEventListener('click', toggleTheme);
     userBtn.addEventListener('click', toggleUserDropdown);
     logoutBtn.addEventListener('click', handleLogout);
-    imageUpload.addEventListener('change', handleImageSelected);
+    fileUpload.addEventListener('change', handleFileSelected);
+
+    filePreviewContainer.addEventListener('click', e => {
+        if (e.target.classList.contains('remove-file-btn')) {
+            removeFilePreview(e.target.dataset.filename);
+        }
+    });
 
     document.addEventListener('click', e => {
         const userDropdown = document.getElementById('userDropdown');
@@ -78,13 +122,12 @@ function setupEventListeners() {
     });
 }
 
-// --- Event Handlers ---
+// --- Event Handlers & Core Logic ---
 function handleKeyPress(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         if (!actionBtn.disabled) {
-            const message = messageInput.value.trim();
-            sendMessage(message, searchModeEnabled);
+            sendMessage(messageInput.value.trim(), searchModeEnabled, fileUpload.files);
             updateActionButtonState();
         }
     }
@@ -92,8 +135,7 @@ function handleKeyPress(e) {
 
 function handleActionButton() {
     if (actionBtn.classList.contains('state-send')) {
-        const message = messageInput.value.trim();
-        sendMessage(message, searchModeEnabled);
+        sendMessage(messageInput.value.trim(), searchModeEnabled, fileUpload.files);
         updateActionButtonState();
     } else {
         isRecording() ? stopAudioRecording() : startAudioRecording();
@@ -102,8 +144,9 @@ function handleActionButton() {
 
 function updateActionButtonState() {
     const hasText = messageInput.value.trim().length > 0;
-    actionBtn.classList.toggle('state-send', hasText);
-    actionBtn.classList.toggle('state-mic', !hasText);
+    const hasFiles = fileUpload.files.length > 0;
+    actionBtn.classList.toggle('state-send', hasText || hasFiles);
+    actionBtn.classList.toggle('state-mic', !hasText && !hasFiles);
 }
 
 function toggleSearch() {
@@ -114,55 +157,79 @@ function toggleSearch() {
     statusText.parentElement.style.color = searchModeEnabled ? 'var(--accent-color)' : 'var(--text-muted)';
 }
 
-// --- MODIFICATION: Update saveEdit to automatically send the message ---
+
+// --- Edit Functions ---
+function enterEditMode(editButton) {
+    const userMessage = editButton.closest('.user-message');
+    const messageContent = userMessage.querySelector('.message-content');
+    const originalText = userMessage.dataset.rawContent || '';
+
+    if (messageContent) messageContent.style.display = 'none';
+    editButton.style.display = 'none';
+
+    const editArea = document.createElement('div');
+    editArea.className = 'message-edit-area';
+    editArea.innerHTML = `
+        <textarea>${originalText}</textarea>
+        <div class="edit-actions">
+            <button class="cancel-btn">Cancel</button>
+            <button class="save-btn">Save</button>
+        </div>
+    `;
+    
+    const messageBody = userMessage.querySelector('.message-body');
+    if (messageContent) {
+        messageContent.after(editArea);
+    } else {
+        messageBody.appendChild(editArea);
+    }
+    editArea.querySelector('textarea').focus();
+}
+
 function saveEdit(saveButton) {
+    const editArea = saveButton.closest('.message-edit-area');
     const userMessage = saveButton.closest('.user-message');
-    const newText = userMessage.querySelector('textarea').value.trim();
+    const newText = editArea.querySelector('textarea').value.trim();
 
     if (newText) {
-        // Find and remove the AI response that followed this user message
+        const attachmentsJSON = userMessage.dataset.attachments;
+        const existingAttachments = attachmentsJSON ? JSON.parse(attachmentsJSON) : null;
+
         const nextMessage = userMessage.nextElementSibling;
         if (nextMessage && nextMessage.classList.contains('assistant-message')) {
             nextMessage.remove();
         }
         
-        // Remove the original user message that was edited
         userMessage.remove();
-
-        // Directly send the new message
-        sendMessage(newText, searchModeEnabled);
+        sendMessage(newText, searchModeEnabled, null, existingAttachments);
     }
-}
-// --- END MODIFICATION ---
-
-function enterEditMode(editButton) {
-    const userMessage = editButton.closest('.user-message');
-    const messageContent = userMessage.querySelector('.message-content');
-    const originalText = userMessage.dataset.rawContent;
-
-    messageContent.innerHTML = `
-        <div class="message-edit-area">
-            <textarea>${originalText}</textarea>
-            <div class="edit-actions">
-                <button class="cancel-btn">Cancel</button>
-                <button class="save-btn">Save</button>
-            </div>
-        </div>
-    `;
-    editButton.style.display = 'none';
 }
 
 function exitEditMode(editArea) {
     const userMessage = editArea.closest('.user-message');
-    const originalText = userMessage.dataset.rawContent;
     const messageContent = userMessage.querySelector('.message-content');
-
-    // Rebuild the original message content
-    messageContent.innerHTML = `<div class="message-text">${marked.parse(originalText)}</div>`;
-    userMessage.querySelector('.edit-btn').style.display = 'flex';
+    
+    if (messageContent) messageContent.style.display = '';
+    const editButton = userMessage.querySelector('.edit-btn');
+    if(editButton) editButton.style.display = 'flex';
+    
+    editArea.remove();
 }
 
 function cancelEdit(cancelButton) {
     const editArea = cancelButton.closest('.message-edit-area');
     exitEditMode(editArea);
+}
+
+
+// --- Modal Functions ---
+function openFileModal(fileName, fileContent) {
+    modalFileName.textContent = fileName;
+    modalFileContent.innerHTML = marked.parse(fileContent);
+    fileModal.style.display = 'flex';
+}
+
+function closeFileModal() {
+    fileModal.style.display = 'none';
+    modalFileContent.innerHTML = '';
 }

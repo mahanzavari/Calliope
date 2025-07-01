@@ -1,3 +1,5 @@
+# In app/api/chat.py
+
 import os
 import json
 from flask import Blueprint, request, jsonify, stream_with_context, Response, current_app
@@ -24,7 +26,7 @@ def chat():
     query = data.get('message', '').strip()
     use_search = data.get('use_search', False)
     quoted_text = data.get('quoted_text', '')
-    
+
     if not query:
         return jsonify({"error": "Message is required"}), 400
 
@@ -40,7 +42,7 @@ def chat():
 
             # Get response from chat service
             response = chat_service.get_response(query, use_search)
-            
+
             # Send the response
             yield f'data: {json.dumps({"response": response})}\n\n'
 
@@ -57,44 +59,48 @@ def chat():
 @login_required
 def upload_file():
     """Handle file uploads"""
+    # --- MODIFICATION START ---
+    # Use .get() for safer access and provide more specific error messages.
     if 'file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No file selected"}), 400
-    
+        return jsonify({"error": "No file part in the request. Make sure the form field name is 'file'."}), 400
+
+    file = request.files.get('file')
+
+    if not file or not file.filename:
+        return jsonify({"error": "No file selected or the file has no name."}), 400
+    # --- MODIFICATION END ---
+
     if file and allowed_file(file.filename):
         try:
             filename = secure_filename(file.filename)
-            
+
             # Create uploads directory if it doesn't exist
             upload_folder = os.path.join(current_app.root_path, '..', 'uploads')
             os.makedirs(upload_folder, exist_ok=True)
-            
+
             file_path = os.path.join(upload_folder, filename)
             file.save(file_path)
-            
+
             # Read file content
             with open(file_path, 'r', encoding='utf-8') as f:
                 file_content = f.read()
-            
+
             # Get file extension
             file_ext = filename.rsplit('.', 1)[1].lower()
-            
+
             # Process file content
             processed_content = chat_service.process_file_content(file_content, file_ext)
-            
+
             return jsonify({
                 "success": True,
                 "filename": filename,
                 "content": processed_content,
                 "file_path": file_path
             })
-            
+
         except Exception as e:
             return jsonify({"error": f"Error processing file: {str(e)}"}), 500
-    
+
     return jsonify({"error": "File type not allowed"}), 400
 
 @chat_bp.route('/chats', methods=['GET'])
@@ -104,7 +110,7 @@ def get_chats():
     try:
         chats = Chat.query.filter_by(user_id=current_user.id).order_by(Chat.updated_at.desc()).all()
         chat_list = []
-        
+
         for chat in chats:
             messages = Message.query.filter_by(chat_id=chat.id).order_by(Message.created_at.asc()).all()
             chat_data = {
@@ -115,9 +121,9 @@ def get_chats():
                 'message_count': len(messages)
             }
             chat_list.append(chat_data)
-        
+
         return jsonify({"chats": chat_list})
-    
+
     except Exception as e:
         return jsonify({"error": f"Error retrieving chats: {str(e)}"}), 500
 
@@ -129,10 +135,10 @@ def get_chat_messages(chat_id):
         chat = Chat.query.filter_by(id=chat_id, user_id=current_user.id).first()
         if not chat:
             return jsonify({"error": "Chat not found"}), 404
-        
+
         messages = Message.query.filter_by(chat_id=chat_id).order_by(Message.created_at.asc()).all()
         message_list = []
-        
+
         for message in messages:
             message_data = {
                 'id': message.id,
@@ -142,9 +148,9 @@ def get_chat_messages(chat_id):
                 'created_at': message.created_at.isoformat()
             }
             message_list.append(message_data)
-        
+
         return jsonify({"messages": message_list})
-    
+
     except Exception as e:
         return jsonify({"error": f"Error retrieving messages: {str(e)}"}), 500
 
@@ -157,7 +163,7 @@ def save_chat_to_db(user_message: str, bot_response: str):
             chat = Chat(user_id=current_user.id, title="New Chat")
             db.session.add(chat)
             db.session.flush()  # Get the chat ID
-        
+
         # Create messages
         user_msg = Message(
             chat_id=chat.id,
@@ -165,17 +171,17 @@ def save_chat_to_db(user_message: str, bot_response: str):
             content=user_message,
             content_type='text'
         )
-        
+
         bot_msg = Message(
             chat_id=chat.id,
             role='assistant',
             content=bot_response,
             content_type='text'
         )
-        
+
         db.session.add_all([user_msg, bot_msg])
         db.session.commit()
-        
+
     except Exception as e:
         print(f"Error saving chat to database: {e}")
         db.session.rollback()

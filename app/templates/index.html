@@ -6,6 +6,10 @@
     <title>Calliope AI Chat</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
@@ -64,21 +68,19 @@
                         </div>
                         
                         <div class="input-wrapper">
-                            <label for="imageUpload" class="upload-btn" title="Upload image">
+                            <label for="fileUpload" class="upload-btn" title="Upload file">
                                 <i class="fas fa-paperclip"></i>
                             </label>
-                            <input type="file" id="imageUpload" accept="image/*" style="display: none;">
-
-                            <div id="imagePreviewContainer" class="preview-container" style="display: none;">
-                                <img id="imagePreview" class="preview-image" src="" alt="Image preview">
-                                <button id="removeImageBtn" class="remove-preview-btn" title="Remove image">&times;</button>
+                            <input type="file" id="fileUpload" style="display: none;" multiple>
+                        
+                            <div id="filePreviewContainer" class="preview-container" style="display: none;">
                             </div>
                             <div id="audioRecordingIndicator" class="audio-indicator" style="display: none;">
                                 <i class="fas fa-microphone" id="micRecordingIcon" style="color: red;"></i>
                                 <span id="recordingTimer">00:00</span>
                                 <button id="cancelAudioBtn" class="remove-preview-btn" title="Cancel audio">&times;</button>
                             </div>
-
+                        
                             <textarea 
                                 id="messageInput" 
                                 placeholder="Type your message..." 
@@ -112,5 +114,27 @@
     </div>
 
     <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Processing...</p>
+        </div>
+    </div>
+
+    <div id="fileModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalFileName"></h2>
+                <button id="modalCloseBtn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <pre><code id="modalFileContent" class="hljs"></code></pre>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
 </body>
 </html>

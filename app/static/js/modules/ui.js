@@ -3,9 +3,8 @@ const themeToggle = document.getElementById('themeToggle');
 const userBtn = document.getElementById('userBtn');
 const userDropdown = document.getElementById('userDropdown');
 const logoutBtn = document.getElementById('logoutBtn');
-const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-const imagePreview = document.getElementById('imagePreview');
-const imageUpload = document.getElementById('imageUpload');
+const filePreviewContainer = document.getElementById('filePreviewContainer');
+const fileUpload = document.getElementById('fileUpload');
 const charCount = document.getElementById('charCount');
 
 // --- Functions ---
@@ -41,22 +40,57 @@ export async function handleLogout() {
     }
 }
 
-export function handleImageSelected(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        imagePreview.src = e.target.result;
-        imagePreviewContainer.style.display = 'flex';
-    };
-    reader.readAsDataURL(file);
+export function handleFileSelected(event) {
+    const files = event.target.files;
+    if (!files.length) return;
+
+    filePreviewContainer.innerHTML = '';
+    filePreviewContainer.style.display = 'flex';
+
+    for (const file of files) {
+        const filePreview = document.createElement('div');
+        filePreview.className = 'file-preview-item';
+
+        const fileIcon = getFileIcon(file.type);
+        const fileName = file.name;
+        const fileSize = (file.size / 1024).toFixed(2) + ' KB';
+
+        filePreview.innerHTML = `
+            <div class="file-icon">${fileIcon}</div>
+            <div class="file-details">
+                <div class="file-name">${fileName}</div>
+                <div class="file-size">${fileSize}</div>
+            </div>
+            <button class="remove-file-btn" data-filename="${fileName}">&times;</button>
+        `;
+        filePreviewContainer.appendChild(filePreview);
+    }
 }
 
-export function removeImagePreview() {
-    imagePreview.src = '';
-    imagePreviewContainer.style.display = 'none';
-    imageUpload.value = '';
+export function removeFilePreview(fileName) {
+    const filePreviewItem = document.querySelector(`.file-preview-item .remove-file-btn[data-filename="${fileName}"]`).parentElement;
+    if (filePreviewItem) {
+        filePreviewItem.remove();
+    }
+
+    if (filePreviewContainer.children.length === 0) {
+        filePreviewContainer.style.display = 'none';
+        fileUpload.value = '';
+    }
 }
+
+function getFileIcon(fileType) {
+    if (fileType.startsWith('image/')) {
+        return '<i class="fas fa-file-image"></i>';
+    } else if (fileType === 'application/pdf') {
+        return '<i class="fas fa-file-pdf"></i>';
+    } else if (fileType === 'text/plain') {
+        return '<i class="fas fa-file-alt"></i>';
+    } else {
+        return '<i class="fas fa-file"></i>';
+    }
+}
+
 
 export function setupAutoResize(textarea) {
     textarea.style.height = 'auto';
