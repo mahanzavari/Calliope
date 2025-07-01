@@ -1,11 +1,23 @@
 import { audioBlob, cancelAudioRecording } from './audio.js';
 import { removeFilePreview } from './ui.js';
 import { quotedText, removeQuote } from './quote.js';
+import { setActiveChatId } from './history.js';
 
 const messagesContainer = document.getElementById('messages');
 const fileUpload = document.getElementById('fileUpload');
 let isProcessing = false;
 window.fileContents = {};
+
+// We will use a local variable to track the current chat ID.
+// It gets updated when a new chat is created or a chat is loaded.
+let currentChatId = null;
+
+// New exported function to keep chat state in sync with history module.
+// This should be called from history.js when the chat context changes.
+export function setCurrentChatId(chatId) {
+    currentChatId = chatId;
+}
+
 
 export async function sendMessage(message, isSearchEnabled, files, existingAttachments = null) {
     if (isProcessing) return;
@@ -19,7 +31,8 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
     if (welcomeMessage) welcomeMessage.remove();
 
     isProcessing = true;
-    document.getElementById('actionBtn').disabled = false;
+    // FIX: Correctly disable the button while processing.
+    document.getElementById('actionBtn').disabled = true;
 
     let finalMessage = message;
     const attachments = existingAttachments || [];
@@ -75,13 +88,21 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
         }
         cancelAudioRecording();
         removeQuote();
+        // Manually trigger input event to update button state
+        document.getElementById('messageInput').dispatchEvent(new Event('input'));
     }
     
     try {
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: finalMessage, use_search: isSearchEnabled, quoted_text: quotedText, is_file_upload_message: attachments.length > 0 })
+            body: JSON.stringify({ 
+                message: finalMessage, 
+                use_search: isSearchEnabled, 
+                quoted_text: quotedText, 
+                chat_id: currentChatId, 
+                is_file_upload_message: attachments.length > 0 
+            })
         });
 
         if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
@@ -93,26 +114,52 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
         const botTextDiv = botMessageDiv.querySelector('.message-text');
         let accumulatedResponse = "";
 
+        // FIX: Replaced the entire stream processing logic with the correct version.
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
+            
             const chunk = decoder.decode(value, { stream: true });
             const lines = chunk.split('\n\n');
+
             for (const line of lines) {
                 if (line.startsWith('data:')) {
-                    const data = JSON.parse(line.substring(5));
-                    if (data.status) {
-                        botTextDiv.innerHTML = `<div class="searching-indicator"><i class="fas fa-search search-icon"></i><span class="message">${data.message}</span><i class="fas fa-book-open book-icon"></i></div>`;
-                    } else if (data.response) {
-                        accumulatedResponse += data.response;
-                        botTextDiv.innerHTML = marked.parse(accumulatedResponse);
-                    } else if (data.error) {
-                        botTextDiv.innerHTML = `<div class="error-message">${data.error}</div>`;
+                    const dataStr = line.substring(5).trim();
+                    if (!dataStr) continue;
+
+                    try {
+                        const data = JSON.parse(dataStr);
+                        
+                        switch (data.type) {
+                            case 'chat_info':
+                                // If this is a new chat, the backend gives us the ID.
+                                // We update our state and the history module.
+                                if (data.chat_id && !currentChatId) {
+                                    currentChatId = data.chat_id;
+                                    setActiveChatId(data.chat_id);
+                                }
+                                break;
+                            case 'response_chunk':
+                                // Clear the initial typing indicator once the first text arrives.
+                                if (botTextDiv.querySelector('.typing-indicator')) {
+                                    botTextDiv.innerHTML = ''; 
+                                }
+                                accumulatedResponse += data.content;
+                                botTextDiv.innerHTML = marked.parse(accumulatedResponse);
+                                break;
+                            case 'error':
+                                botTextDiv.innerHTML = `<div class="error-message">${data.message}</div>`;
+                                // End the stream processing on a fatal error.
+                                throw new Error(data.message);
+                        }
+                    } catch (e) {
+                        console.error("Error parsing stream data:", dataStr, e);
                     }
                 }
             }
         }
         
+        // Post-processing should happen *after* the stream is complete.
         botTextDiv.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightElement(block);
         });
@@ -139,6 +186,7 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
         addMessageToUI('assistant', { isError: true, text: `Sorry, I encountered an error: ${error.message}` });
     } finally {
         isProcessing = false;
+        // FIX: Correctly re-enable the button.
         document.getElementById('actionBtn').disabled = false;
     }
 }
@@ -165,7 +213,6 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     if (content.isError) {
         messageDiv.classList.add('error-bubble');
     }
-    // removed avatars
     
     const messageBodyWrapper = document.createElement('div');
     messageBodyWrapper.className = 'message-body';
@@ -228,18 +275,15 @@ function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
         messageDiv.appendChild(editBtn);
     }
     
-    // --- MODIFICATION START ---
     if (contentDiv.hasChildNodes()) {
         messageBodyWrapper.appendChild(contentDiv);
     }
 
-    // Create and append the actions container inside the body wrapper for assistant messages
     if (role === 'assistant') {
         const actions = document.createElement('div');
         actions.className = 'message-actions';
         messageBodyWrapper.appendChild(actions);
     }
-    // --- MODIFICATION END ---
     
     messageDiv.appendChild(messageBodyWrapper);
     messagesContainer.appendChild(messageDiv);

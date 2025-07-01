@@ -12,6 +12,15 @@ let closeTimeout;
 
 // --- Functions ---
 
+export function setActiveChatId(id) {
+    activeChatId = id;
+    // Highlight the active chat in the history list
+    const existingActive = document.querySelector('.chat-history-item.active');
+    if (existingActive) existingActive.classList.remove('active');
+    const newActive = document.querySelector(`.chat-history-item[data-chat-id="${id}"]`);
+    if (newActive) newActive.classList.add('active');
+}
+
 /**
  * Fetches the chat history from the server.
  */
@@ -58,6 +67,7 @@ function renderChatHistory() {
  */
 export async function loadChat(chatId) {
     if (activeChatId === chatId) return;
+    setActiveChatId(chatId);
 
     try {
         const response = await fetch(`/api/chats/${chatId}/messages`);
@@ -80,7 +90,7 @@ export async function loadChat(chatId) {
  * Handles creating a new chat.
  */
 export function handleNewChat() {
-    activeChatId = null;
+    setActiveChatId(null);
     document.getElementById('messages').innerHTML = `
         <div class="welcome-message">
             <div class="welcome-icon"><i class="fas fa-robot"></i></div>

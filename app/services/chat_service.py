@@ -1,12 +1,14 @@
 import os
 import logging
-import time  # Import the time module
 from typing import Generator
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from .rag_service import RAGService
+from langchain.prompts import PromptTemplate
+from langchain.chains import ConversationChain
+from langchain.memory import ConversationSummaryMemory
+from langchain_core.messages import HumanMessage, SystemMessage
+from app.core.extensions import db
+from app.models import Chat, Message
+from flask_login import current_user
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -15,111 +17,92 @@ class ChatService:
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash",
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
-            temperature=0.7
+            temperature=0.7,
+            streaming=True  # Enable streaming
         )
-        self.rag_service = RAGService()
 
-    def _create_confidence_check_chain(self):
-        """Create a chain to check if the query requires external information"""
-        prompt = ChatPromptTemplate.from_template(
-            """Analyze the following query and determine if it requires external information,
-            real-time data, or current events to answer accurately.
+    def _get_or_create_chat_and_memory(self, chat_id: int = None):
+        chat = None
+        if chat_id:
+            chat = Chat.query.filter_by(id=chat_id, user_id=current_user.id).first()
 
-            Answer with ONLY 'yes' or 'no'.
-
-            Query: {query}
-
-            Answer:"""
-        )
-        return prompt | self.llm | StrOutputParser()
-
-    def _create_direct_answer_chain(self):
-        """Create a chain for direct answers without RAG"""
-        prompt = ChatPromptTemplate.from_template(
-            """You are a helpful AI assistant. Answer the following query based on your knowledge.
-            If you're not sure about something, say so clearly.
-
-            When providing code examples, always enclose them in triple backticks with the language name.
-            For example:
-            ```python
-            print("Hello, World!")
-            ```
-
-            Query: {query}
-
-            Answer:"""
-        )
-        return prompt | self.llm | StrOutputParser()
-
-    def _create_rag_chain(self):
-        """Create a chain that uses RAG to answer queries"""
-        rag_prompt = ChatPromptTemplate.from_template(
-            """Based on the following search results and your knowledge, answer the user's query.
-            If the search results are not relevant or insufficient, rely on your knowledge.
-            Always cite sources when using information from the search results.
+        if not chat:
+            chat = Chat(user_id=current_user.id, title="New Chat")
+            db.session.add(chat)
+            db.session.commit()
+        
+        memory = ConversationSummaryMemory(llm=self.llm, memory_key="history", input_key="input")
+        if chat.summary:
+            memory.buffer = chat.summary
             
-            When providing code examples, always enclose them in triple backticks with the language name.
-            For example:
-            ```javascript
-            console.log("Hello, World!");
-            ```
+        return chat, memory
 
-            Search Results:
-            {context}
-
-            User Query: {query}
-
-            Answer:"""
-        )
-        chain_input = {
-            "context": lambda x: self.rag_service.get_context(x["query"]),
-            "query": lambda x: x["query"]
-        }
-        return (
-            chain_input
-            | rag_prompt
-            | self.llm
-            | StrOutputParser()
-        )
-
-    # --- MODIFICATION START ---
-    def get_response(self, query: str, use_rag: bool = False) -> Generator[str, None, None]:
+    def get_response(self, query: str, chat_id: int = None, use_rag: bool = False) -> Generator[dict, None, None]:
         """
-        Get a smooth, character-by-character streaming response from the AI system.
+        Yields a stream of dictionary events: chat info, then response chunks.
         """
+        full_bot_response = ""
         try:
-            chain_input = {"query": query}
-            chain = None
+            # Validate query
+            if not query or not query.strip():
+                yield {"type": "error", "message": "Query cannot be empty"}
+                return
+                
+            chat, memory = self._get_or_create_chat_and_memory(chat_id)
+            # Immediately yield the chat ID
+            yield {"type": "chat_info", "chat_id": chat.id}
 
-            if use_rag:
-                chain = self._create_rag_chain()
+            # Get conversation history
+            history = memory.buffer or "No previous conversation."
+            
+            # Create messages list with proper content
+            messages = []
+            
+            # Add system message if there's conversation history
+            if history and history != "No previous conversation.":
+                messages.append(SystemMessage(content=f"You are a helpful AI assistant. Previous conversation context: {history}"))
             else:
-                confidence_chain = self._create_confidence_check_chain()
-                confidence_response = confidence_chain.invoke(chain_input).strip().lower()
+                messages.append(SystemMessage(content="You are a helpful AI assistant. Be conversational and provide detailed, helpful responses."))
+            
+            # Add the user's current message
+            messages.append(HumanMessage(content=query.strip()))
+            
+            # Stream the response
+            for chunk in self.llm.stream(messages):
+                if hasattr(chunk, 'content') and chunk.content:
+                    content = chunk.content
+                    full_bot_response += content
+                    yield {"type": "response_chunk", "content": content}
 
-                if "no" in confidence_response:
-                    chain = self._create_direct_answer_chain()
-                else:
-                    chain = self._create_rag_chain()
-
-            # This inner function will smooth out the stream from the chain.
-            def smooth_stream(generator: Generator[str, None, None]) -> Generator[str, None, None]:
-                for chunk in generator:
-                    for char in chunk:
-                        yield char
-                        time.sleep(0.005) # A very small delay between characters
-
-            # Yield from the smoother generator
-            yield from smooth_stream(chain.stream(chain_input))
+            # Save the conversation after streaming is complete
+            if full_bot_response.strip():
+                self._save_chat_turn(chat, memory, query, full_bot_response)
+            else:
+                yield {"type": "error", "message": "No response generated"}
 
         except Exception as e:
-            logging.error(f"An unexpected error occurred in ChatService: {e}", exc_info=True)
-            yield "I apologize, but I encountered an unexpected error. Please try again."
-    # --- MODIFICATION END ---
+            logging.error(f"An unexpected error in ChatService: {e}", exc_info=True)
+            yield {"type": "error", "message": f"An unexpected error occurred: {str(e)}"}
 
+    def _save_chat_turn(self, chat: Chat, memory: ConversationSummaryMemory, user_message: str, bot_response: str):
+        try:
+            # Add messages to memory for future conversations
+            memory.save_context({"input": user_message}, {"output": bot_response})
+            
+            # Save messages to database
+            user_msg = Message(chat_id=chat.id, role='user', content=user_message)
+            bot_msg = Message(chat_id=chat.id, role='assistant', content=bot_response)
+            db.session.add_all([user_msg, bot_msg])
+            
+            # Update chat summary
+            chat.summary = memory.buffer
+            db.session.commit()
+            
+        except Exception as e:
+            logging.error(f"Error saving chat turn: {e}", exc_info=True)
+            db.session.rollback()
 
     def process_file_content(self, file_content: str, file_type: str) -> str:
-        """Process uploaded file content and return context, formatted for Markdown."""
         if file_type in ['py', 'js', 'html', 'css', 'java', 'cpp', 'c']:
             return f"```{file_type}\n{file_content}\n```"
         else:

@@ -1,12 +1,9 @@
 import os
 import json
 from flask import Blueprint, request, jsonify, stream_with_context, Response, current_app
-from flask_login import login_required, current_user
+from flask_login import login_required
 from werkzeug.utils import secure_filename
 from app.services.chat_service import ChatService
-from app.core.extensions import db
-from app.models import Chat, Message
-from datetime import datetime
 
 chat_bp = Blueprint('chat', __name__)
 chat_service = ChatService()
@@ -20,46 +17,33 @@ def allowed_file(filename):
 @chat_bp.route('/chat', methods=['POST'])
 @login_required
 def chat():
-    """Main chat endpoint with streaming response"""
+    """Main chat endpoint with streaming response and memory."""
     data = request.json
     query = data.get('message', '').strip()
     use_search = data.get('use_search', False)
-    quoted_text = data.get('quoted_text', '')
+    chat_id = data.get('chat_id')
 
     if not query and not data.get('is_file_upload_message'):
         return jsonify({"error": "Message is required"}), 400
 
-    if quoted_text:
-        query = f"Regarding: '{quoted_text}'\n\n{query}"
-
     def generate():
-        full_bot_response = ""
+        """Yields a stream of structured JSON events from the service."""
         try:
-            if use_search:
-                yield f'data: {json.dumps({"status": "searching", "message": "Searching..."})}\n\n'
-
-            # get_response is a generator, so we loop through it
-            for chunk in chat_service.get_response(query, use_search):
-                full_bot_response += chunk
-                # Stream each chunk to the frontend as it arrives
-                yield f'data: {json.dumps({"response": chunk})}\n\n'
-
-            # After the stream is complete, save the fully accumulated response
-            save_chat_to_db(query, full_bot_response)
-
+            for event in chat_service.get_response(query, chat_id, use_search):
+                yield f'data: {json.dumps(event)}\n\n'
         except Exception as e:
-            # This will now correctly handle any exceptions during the process
-            error_msg = f"An error occurred: {str(e)}"
-            yield f'data: {json.dumps({"error": error_msg})}\n\n'
+            # Log the exception for debugging
+            current_app.logger.error(f"Error in chat stream: {e}", exc_info=True)
+            # Yield a user-friendly error
+            yield f'data: {json.dumps({"type": "error", "message": "An unexpected error occurred on the server."})}\n\n'
 
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
+
 
 @chat_bp.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
     """Handle file uploads"""
-    # --- MODIFICATION START ---
-    # Use .get() for safer access and provide more specific error messages.
     if 'file' not in request.files:
         return jsonify({"error": "No file part in the request. Make sure the form field name is 'file'."}), 400
 
@@ -67,27 +51,19 @@ def upload_file():
 
     if not file or not file.filename:
         return jsonify({"error": "No file selected or the file has no name."}), 400
-    # --- MODIFICATION END ---
 
     if file and allowed_file(file.filename):
         try:
             filename = secure_filename(file.filename)
-
-            # Create uploads directory if it doesn't exist
             upload_folder = os.path.join(current_app.root_path, '..', 'uploads')
             os.makedirs(upload_folder, exist_ok=True)
-
             file_path = os.path.join(upload_folder, filename)
             file.save(file_path)
 
-            # Read file content
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 file_content = f.read()
 
-            # Get file extension
             file_ext = filename.rsplit('.', 1)[1].lower()
-
-            # Process file content
             processed_content = chat_service.process_file_content(file_content, file_ext)
 
             return jsonify({
@@ -96,7 +72,6 @@ def upload_file():
                 "content": processed_content,
                 "file_path": file_path
             })
-
         except Exception as e:
             return jsonify({"error": f"Error processing file: {str(e)}"}), 500
 
@@ -106,15 +81,20 @@ def upload_file():
         "error": f"File type not supported. Supported types are: {supported_files_str}"
     }), 400
 
+
 @chat_bp.route('/chats', methods=['GET'])
 @login_required
 def get_chats():
     """Get user's chat history"""
     try:
+        from app.models import Chat
+        from flask_login import current_user
+        
         chats = Chat.query.filter_by(user_id=current_user.id).order_by(Chat.updated_at.desc()).all()
         chat_list = []
 
         for chat in chats:
+            from app.models import Message
             messages = Message.query.filter_by(chat_id=chat.id).order_by(Message.created_at.asc()).all()
             chat_data = {
                 'id': chat.id,
@@ -126,15 +106,18 @@ def get_chats():
             chat_list.append(chat_data)
 
         return jsonify({"chats": chat_list})
-
     except Exception as e:
         return jsonify({"error": f"Error retrieving chats: {str(e)}"}), 500
+
 
 @chat_bp.route('/chats/<int:chat_id>/messages', methods=['GET'])
 @login_required
 def get_chat_messages(chat_id):
     """Get messages for a specific chat"""
     try:
+        from app.models import Chat, Message
+        from flask_login import current_user
+        
         chat = Chat.query.filter_by(id=chat_id, user_id=current_user.id).first()
         if not chat:
             return jsonify({"error": "Chat not found"}), 404
@@ -153,27 +136,5 @@ def get_chat_messages(chat_id):
             message_list.append(message_data)
 
         return jsonify({"messages": message_list})
-
     except Exception as e:
         return jsonify({"error": f"Error retrieving messages: {str(e)}"}), 500
-
-def save_chat_to_db(user_message: str, bot_response: str):
-    """Save chat messages to database"""
-    try:
-        # Get or create chat session
-        chat = Chat.query.filter_by(user_id=current_user.id).order_by(Chat.updated_at.desc()).first()
-        if not chat:
-            chat = Chat(user_id=current_user.id, title="New Chat")
-            db.session.add(chat)
-            db.session.flush()
-
-        # Create messages
-        user_msg = Message(chat_id=chat.id, role='user', content=user_message)
-        bot_msg = Message(chat_id=chat.id, role='assistant', content=bot_response)
-        
-        db.session.add_all([user_msg, bot_msg])
-        db.session.commit()
-        
-    except Exception as e:
-        print(f"Error saving chat to database: {e}")
-        db.session.rollback()
