@@ -112,7 +112,8 @@ A modern AI chat application built with Flask, Langchain, and Google's Gemini AI
 
 2. **Install dependencies**:
    ```bash
-   pip install -r requirements.txt
+   pip install --upgrade -r requirements.txt
+   pip install --upgrade langchain langchain-core langchain-google-genai langchain-community sentence-transformers torch transformers
    ```
 
 3. **Install PostgreSQL**:
@@ -303,7 +304,27 @@ python test_setup.py
 python -m pytest
 ```
 
-## 🐛 Troubleshooting
+## 🛠️ RAG Provider Configuration
+
+You can control which search providers are used by setting the `SEARCH_PROVIDERS` environment variable in your `.env` file:
+
+```
+SEARCH_PROVIDERS=tavily,bing,duckduckgo
+```
+
+Providers will be used in the order listed. Make sure you have the necessary API keys for each provider in your `.env` file if required.
+
+## 🛠️ Troubleshooting
+
+### Git Troubleshooting
+If your Python files are not being staged by git, check your `.gitignore` for a `*.py` entry. Remove or comment it out to allow tracking of `.py` files.
+
+### Langchain Import Errors
+If you encounter errors such as `ModuleNotFoundError: No module named 'langchain_core.tracers.context'`, upgrade your langchain packages:
+
+```
+pip install --upgrade langchain langchain-core langchain-google-genai langchain-community
+```
 
 ### Common Issues
 

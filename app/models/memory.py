@@ -1,4 +1,3 @@
-# app/models/memory.py
 from app.core.extensions import db
 from datetime import datetime, timezone
 

@@ -24,7 +24,49 @@ export function setCurrentChatId(chatId) {
     currentChatId = chatId;
 }
 
-export async function sendMessage(message, isSearchEnabled, files, existingAttachments = null, onStateChangeCallback) {
+/**
+ * NEW: A dedicated function to render the citations list.
+ * This improves code organization (high coherency).
+ * @param {HTMLElement} botMessageDiv - The message bubble to append the citations to.
+ * @param {Array} sources - The list of source objects from the server.
+ */
+function renderCitations(botMessageDiv, sources) {
+    if (!sources || sources.length === 0) return;
+
+    const messageBody = botMessageDiv.querySelector('.message-body');
+    if (!messageBody) return;
+
+    const container = document.createElement('div');
+    container.className = 'citations-container';
+
+    const header = document.createElement('h4');
+    header.className = 'citations-header';
+    header.innerHTML = `<i class="fas fa-link"></i> Sources`;
+    container.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'citations-list';
+    container.appendChild(list);
+
+    sources.forEach(source => {
+        const item = document.createElement('a');
+        item.className = 'citation-item';
+        item.href = source.url;
+        item.target = '_blank';
+        item.rel = 'noopener noreferrer';
+        item.innerHTML = `
+            <span class="citation-id">${source.id}</span>
+            <span class="citation-title">${source.title}</span>
+            <i class="fas fa-external-link-alt citation-icon"></i>
+        `;
+        list.appendChild(item);
+    });
+
+    messageBody.appendChild(container);
+}
+
+
+export async function sendMessage(message, isSearchEnabled, isResearchMode, files, existingAttachments = null, onStateChangeCallback) {
     if (isProcessing) return;
     const hasAudio = audioBlob != null;
     const hasFiles = files && files.length > 0;
@@ -121,6 +163,12 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
             requestAnimationFrame(() => {
                 botTextDiv.innerHTML = marked.parse(accumulatedResponse);
                 botTextDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+                botTextDiv.querySelectorAll('pre').forEach(pre => {
+                    const codeCopyBtn = document.createElement('button');
+                    codeCopyBtn.className = 'copy-code-btn';
+                    codeCopyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                    pre.appendChild(codeCopyBtn);
+                });
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             });
         }
@@ -143,6 +191,7 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
             body: JSON.stringify({ 
                 message: finalMessage, 
                 use_search: isSearchEnabled, 
+                is_research_mode: isResearchMode,
                 quoted_text: quotedText, 
                 chat_id: currentChatId, 
                 is_file_upload_message: attachments.length > 0 
@@ -184,17 +233,25 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
                                     setActiveChatId(data.chat_id);
                                 }
                                 break;
-                            case 'response_chunk':
+                            case 'status':
                                 if (botTextDiv.querySelector('.typing-indicator')) {
+                                    botTextDiv.innerHTML = `<div class="status-update">${data.message}</div>`;
+                                }
+                                break;
+                            case 'response_chunk':
+                                if (botTextDiv.querySelector('.typing-indicator') || botTextDiv.querySelector('.status-update')) {
                                     botTextDiv.innerHTML = ''; 
                                 }
                                 const words = data.content.split(/(\s+)/);
                                 wordQueue.push(...words);
 
                                 if (!streamingInterval) {
-                                    // FIX: Reduced interval for faster streaming
                                     streamingInterval = setInterval(processWordQueue, 5); 
                                 }
+                                break;
+                            // NEW: Handle the sources event
+                            case 'sources':
+                                renderCitations(botMessageDiv, data.data);
                                 break;
                             case 'title_update':
                                 updateChatTitleInList(data.chat_id, data.title);
@@ -208,23 +265,6 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
                     }
                 }
             }
-        }
-        
-        botTextDiv.querySelectorAll('pre').forEach(pre => {
-            const codeCopyBtn = document.createElement('button');
-            codeCopyBtn.className = 'copy-code-btn';
-            codeCopyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
-            pre.appendChild(codeCopyBtn);
-        });
-        
-        const fullCopyBtn = document.createElement('button');
-        fullCopyBtn.className = 'copy-full-btn';
-        fullCopyBtn.title = 'Copy full message';
-        fullCopyBtn.innerHTML = '<i class="fas fa-copy"></i>';
-        
-        const actionsContainer = botMessageDiv.querySelector('.message-actions');
-        if (actionsContainer) {
-            actionsContainer.appendChild(fullCopyBtn);
         }
         
     } catch (error) {
@@ -322,7 +362,6 @@ export function addMessageToUI(role, content, isStreaming = false, quotedText = 
     }
 
     if (role === 'user' && !isStreaming) {
-        // FIX: Create and append the edit button for user messages
         const editBtn = document.createElement('button');
         editBtn.className = 'edit-btn';
         editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';

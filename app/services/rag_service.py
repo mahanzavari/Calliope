@@ -36,9 +36,9 @@ class RAGService:
             if provider.is_available():
                 self.providers.append(provider)
 
-    def get_context(self, query: str, num_results: int = 5) -> List[Dict[str, Any]]:
+    def get_context(self, query: str, num_results: int = 5) -> Dict[str, Any]:
         """
-        Run the query on all configured providers and return merged results
+        Run the query on all configured providers, rerank, and return structured context and sources.
         """
         all_results = []
         for provider in self.providers:
@@ -48,16 +48,25 @@ class RAGService:
             except Exception as e:
                 print(f"Search error with {provider.get_provider_name()}: {e}")
         
-        # --- This part was missing from the correct get_context before ---
-        # --- It should now use the reranking and formatting logic ---
         if not all_results:
-            return ""
+            return {"context": "", "sources": []}
 
         documents = self.extract_content_from_results(all_results)
-        reranked_docs = self.rerank_documents(query, documents)
-        context = "\n\n".join([doc.page_content for doc in reranked_docs])
-        return context
-        # --- End of added logic ---
+        reranked_docs = self.rerank_documents(query, documents, top_k=4) # Use top 4 for more comprehensive answers
+        
+        context_parts = []
+        sources = []
+        for i, doc in enumerate(reranked_docs):
+            context_parts.append(f"Source [{i+1}]: {doc.page_content}")
+            sources.append({
+                "id": i + 1,
+                "title": doc.metadata.get('title', 'Untitled'),
+                "url": doc.metadata.get('url', '#')
+            })
+            
+        context = "\n\n".join(context_parts)
+        
+        return {"context": context, "sources": sources}
 
 
     def extract_content_from_results(self, search_results: List[Dict[str, Any]]) -> List[Document]:
@@ -66,14 +75,14 @@ class RAGService:
         for result in search_results:
             content = f"Title: {result.get('title', '')}\n"
             content += f"Snippet: {result.get('snippet', '')}\n"
-            content += f"URL: {result.get('url', '')}" # Corrected from 'link' to 'url'
+            content += f"URL: {result.get('url', '')}" 
             
             doc = Document(
                 page_content=content,
                 metadata={
                     'title': result.get('title', ''),
                     'url': result.get('url', ''),
-                    'source': result.get('provider', 'unknown') # Corrected from 'source' to 'provider'
+                    'source': result.get('provider', 'unknown') 
                 }
             )
             documents.append(doc)

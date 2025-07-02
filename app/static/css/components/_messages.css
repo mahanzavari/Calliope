@@ -45,7 +45,6 @@
 
 .message.assistant-message {
     align-self: flex-start;
-    align-items: center;
 }
 
 /* Avatar and Content Styling */
@@ -53,6 +52,7 @@
     width: 40px; height: 40px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.2rem; flex-shrink: 0;
+    margin-top: 0.5rem;
 }
 
 .user-message .message-avatar { background-color: var(--message-bg-user); color: var(--message-text-user); }
@@ -91,7 +91,6 @@
     background-color: var(--bg-tertiary);
     padding: 0.2rem 0.4rem;
     border-radius: 0.25rem;
-    /* MODIFICATION: Set a consistent monospace font for inline code */
     font-family: Consolas, 'Courier New', monospace;
 }
 
@@ -118,44 +117,6 @@
 .edit-actions .save-btn { background-color: var(--success-color); color: white; }
 .edit-actions .cancel-btn { background-color: var(--bg-tertiary); color: var(--text-primary); }
 
-/* Modern Copy Button */
-.copy-btn-modern {
-    background: none;
-    border: 1px solid var(--border-color);
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    margin-left: 0.75rem;
-    flex-shrink: 0;
-    opacity: 0;
-    transform: scale(0.8);
-    transition: all 0.2s ease-in-out;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.assistant-message:hover .copy-btn-modern {
-    opacity: 1;
-    transform: scale(1);
-}
-
-.copy-btn-modern:hover {
-    background-color: var(--bg-tertiary);
-    border-color: var(--accent-color);
-    color: var(--text-primary);
-}
-
-.copy-btn-modern.copied {
-    background-color: var(--success-color);
-    border-color: var(--success-color);
-    color: white;
-    transform: scale(1.1);
-    cursor: default;
-}
-/* File Attachment in Message */
 .file-attachment {
     display: flex;
     align-items: center;
@@ -187,8 +148,6 @@
     text-overflow: ellipsis;
 }
 
-
-/* Modal Styles */
 .modal {
     position: fixed;
     z-index: 2000;
@@ -202,11 +161,6 @@
     align-items: center;
     justify-content: center;
     animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
 }
 
 .modal-content {
@@ -232,324 +186,168 @@
     margin-bottom: 1rem;
 }
 
-.modal-header h2 {
-    font-size: 1.25rem;
-    color: var(--text-primary);
-}
+.modal-header h2 { font-size: 1.25rem; color: var(--text-primary); }
+.modal-body { flex: 1; overflow-y: auto; background-color: var(--code-bg); padding: 1rem; border-radius: 0.75rem; margin: 0; }
+.modal-body pre { background-color: transparent; padding: 0; margin: 0; border: none; font-size: 0.9rem; line-height: 1.6; }
+.modal-body::-webkit-scrollbar { width: 8px; }
+.modal-body::-webkit-scrollbar-track { background: transparent; }
+.modal-body::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 10px; border: 2px solid var(--code-bg); }
+.modal-body::-webkit-scrollbar-thumb:hover { background-color: var(--text-muted); }
+.close-btn { color: var(--text-muted); font-size: 2rem; font-weight: bold; background: none; border: none; cursor: pointer; line-height: 1; padding: 0; }
+.close-btn:hover, .close-btn:focus { color: var(--text-primary); }
 
-.modal-body {
-    flex: 1;
-    overflow-y: auto;
-    background-color: var(--code-bg);
-    padding: 1rem;
-    border-radius: 0.75rem;
-    margin: 0;
-}
+.message-body { display: flex; flex-direction: column; align-items: flex-start; }
+.user-message .message-body { align-items: flex-end; }
+.file-attachment { margin-bottom: 0.5rem; }
 
-.modal-body pre {
-    background-color: transparent;
-    padding: 0;
-    margin: 0;
-    border: none;
+.message-edit-area { width: 100%; max-width: 100%; background-color: var(--bg-secondary); border-radius: 1rem; padding: 0.75rem 1rem; margin-top: 0.5rem; border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); display: flex; flex-direction: column; gap: 0.5rem; transition: all 0.2s ease-in-out; }
+.message-edit-area:focus-within { border-color: var(--accent-color); box-shadow: 0 0 0 3px var(--accent-color-translucent); }
+.message-edit-area textarea { background: transparent; border: none; outline: none; resize: none; width: 100%; padding: 0; font-family: inherit; font-size: 1rem; line-height: 1.6; color: var(--text-primary); min-height: 60px; max-height: 200px; }
+.message-edit-area textarea::-webkit-scrollbar { width: 8px; }
+.message-edit-area textarea::-webkit-scrollbar-track { background: transparent; }
+.message-edit-area textarea::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 10px; border: 2px solid var(--bg-secondary); }
+.message-edit-area textarea::-webkit-scrollbar-thumb:hover { background-color: var(--text-muted); }
+.edit-actions { display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-light); }
+.edit-actions button { border: none; border-radius: 0.5rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; }
+.edit-actions .cancel-btn { background-color: var(--bg-tertiary); color: var(--text-secondary); }
+.edit-actions .cancel-btn:hover { background-color: var(--border-color); color: var(--text-primary); }
+.edit-actions .save-btn { background-color: var(--accent-color); color: white; }
+.edit-actions .save-btn:hover { background-color: var(--accent-hover); transform: translateY(-1px); }
+.error-bubble .message-content { background-color: var(--error-color-bg, #ffebee); border-color: var(--error-color, #dc3545); color: var(--error-color, #dc3545); }
+[data-theme="dark"] .error-bubble .message-content { background-color: var(--error-color-bg, #4d2424); }
+.error-bubble .message-text { display: flex; align-items: center; gap: 0.75rem; font-weight: 500; }
+.message-text pre { background-color: var(--code-bg); border-radius: 0.75rem; padding: 1rem; margin: 0.75rem 0; border: 1px solid var(--border-color); white-space: pre-wrap; word-wrap: break-word; font-family: Consolas, 'Courier New', monospace; font-size: 0.9rem; position: relative; }
+.message-text pre code.hljs { padding: 0; background: none; color: var(--code-text); }
+.message-text pre::-webkit-scrollbar { width: 8px; height: 8px; }
+.message-text pre::-webkit-scrollbar-track { background: transparent; }
+.message-text pre::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 10px; border: 2px solid var(--code-bg); }
+.message-text pre::-webkit-scrollbar-thumb:hover { background-color: var(--text-muted); }
+.message-text p code, .message-text li code { background-color: var(--accent-color-translucent); color: var(--accent-color); padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.9em; }
+#messages::-webkit-scrollbar { width: 8px; height: 8px; }
+#messages::-webkit-scrollbar-track { background: transparent; }
+#messages::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 10px; }
+#messages::-webkit-scrollbar-thumb { border: 2px solid var(--bg-secondary); }
+#messages::-webkit-scrollbar-thumb:hover { background-color: var(--text-muted); }
+.copy-code-btn { position: absolute; top: 0.75rem; right: 0.75rem; background-color: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; padding: 0.25rem 0.6rem; font-size: 0.8rem; font-weight: 500; cursor: pointer; opacity: 0; transition: all 0.2s ease-in-out; }
+[data-theme="light"] .copy-code-btn { background-color: rgba(0, 0, 0, 0.05); color: #000; border: 1px solid rgba(0, 0, 0, 0.1); }
+.message-text pre:hover .copy-code-btn { opacity: 1; }
+.copy-code-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
+[data-theme="light"] .copy-code-btn:hover { background-color: rgba(0, 0, 0, 0.1); }
+.message-actions { display: flex; gap: 0.5rem; padding-top: 0.5rem; opacity: 0; transition: all 0.2s ease-in-out; }
+.assistant-message:hover .message-actions { opacity: 1; }
+.assistant-message .message-body:hover .message-actions { opacity: 1; }
+.copy-full-btn { background-color: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow); }
+.copy-full-btn:hover { background-color: var(--border-color); color: var(--text-primary); }
+
+.citations-container {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+.citations-header {
     font-size: 0.9rem;
-    line-height: 1.6;
-}
-
-.modal-body::-webkit-scrollbar {
-    width: 8px;
-}
-
-.modal-body::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-    border-radius: 10px;
-    border: 2px solid var(--code-bg);
-}
-
-.modal-body::-webkit-scrollbar-thumb:hover {
-    background-color: var(--text-muted);
-}
-.close-btn {
-    color: var(--text-muted);
-    font-size: 2rem;
-    font-weight: bold;
-    background: none;
-    border: none;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0;
-}
-
-.close-btn:hover,
-.close-btn:focus {
-    color: var(--text-primary);
-}
-.message-body {
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.user-message .message-body {
-    align-items: flex-end;
-}
-
-.file-attachment {
-    margin-bottom: 0.5rem;
-}
-
-.message-edit-area {
-    width: 100%;
-    max-width: 100%;
-    background-color: var(--bg-secondary);
-    border-radius: 1rem;
-    padding: 0.75rem 1rem;
-    margin-top: 0.5rem;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    transition: all 0.2s ease-in-out;
-}
-
-.message-edit-area:focus-within {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px var(--accent-color-translucent);
-}
-
-.message-edit-area textarea {
-    background: transparent;
-    border: none;
-    outline: none;
-    resize: none;
-    width: 100%;
-    padding: 0;
-    font-family: inherit;
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--text-primary);
-    min-height: 60px;
-    max-height: 200px;
-}
-
-.message-edit-area textarea::-webkit-scrollbar {
-    width: 8px;
-}
-
-.message-edit-area textarea::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.message-edit-area textarea::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-    border-radius: 10px;
-    border: 2px solid var(--bg-secondary);
-}
-
-.message-edit-area textarea::-webkit-scrollbar-thumb:hover {
-    background-color: var(--text-muted);
-}
-
-.edit-actions {
-    display: flex;
-    justify-content: flex-end;
     align-items: center;
     gap: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--border-light);
 }
-
-.edit-actions button {
-    border: none;
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
+.citations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
-
-.edit-actions .cancel-btn {
-    background-color: var(--bg-tertiary);
-    color: var(--text-secondary);
-}
-
-.edit-actions .cancel-btn:hover {
-    background-color: var(--border-color);
-    color: var(--text-primary);
-}
-
-.edit-actions .save-btn {
-    background-color: var(--accent-color);
-    color: white;
-}
-
-.edit-actions .save-btn:hover {
-    background-color: var(--accent-hover);
-    transform: translateY(-1px);
-}
-.error-bubble .message-content {
-    background-color: var(--error-color-bg, #ffebee);
-    border-color: var(--error-color, #dc3545);
-    color: var(--error-color, #dc3545);
-}
-
-[data-theme="dark"] .error-bubble .message-content {
-    background-color: var(--error-color-bg, #4d2424);
-}
-
-.error-bubble .message-text {
+.citation-item {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    font-weight: 500;
-}
-.message-text pre {
-    background-color: var(--code-bg);
-    border-radius: 0.75rem;
-    padding: 1rem;
-    margin: 0.75rem 0;
-    border: 1px solid var(--border-color);
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    /* MODIFICATION: Set a consistent monospace font for code blocks */
-    font-family: Consolas, 'Courier New', monospace;
-    font-size: 0.9rem;
-    position: relative;
-}
-
-.message-text pre code.hljs {
-    padding: 0;
-    background: none;
-    color: var(--code-text);
-}
-
-.message-text pre::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-.message-text pre::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.message-text pre::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-    border-radius: 10px;
-    border: 2px solid var(--code-bg);
-}
-
-.message-text pre::-webkit-scrollbar-thumb:hover {
-    background-color: var(--text-muted);
-}
-
-.message-text p code,
-.message-text li code {
-  background-color: var(--accent-color-translucent);
-  color: var(--accent-color);
-  padding: 0.15rem 0.4rem;
-  border-radius: 0.25rem;
-  font-size: 0.9em;
-}
-
-#messages::-webkit-scrollbar,
-.modal-body::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-#messages::-webkit-scrollbar-track,
-.modal-body::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-#messages::-webkit-scrollbar-thumb,
-.modal-body::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-    border-radius: 10px;
-}
-
-#messages::-webkit-scrollbar-thumb {
-     border: 2px solid var(--bg-secondary);
-}
-.modal-body::-webkit-scrollbar-thumb {
-     border: 2px solid var(--code-bg, #1d1f21);
-}
-
-#messages::-webkit-scrollbar-thumb:hover,
-.modal-body::-webkit-scrollbar-thumb:hover {
-    background-color: var(--text-muted);
-}
-
-.copy-code-btn {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
-    padding: 0.25rem 0.6rem;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    opacity: 0;
-    transition: all 0.2s ease-in-out;
-}
-
-[data-theme="light"] .copy-code-btn {
-    background-color: rgba(0, 0, 0, 0.05);
-    color: #000;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-
-.message-text pre:hover .copy-code-btn {
-    opacity: 1;
-}
-
-.copy-code-btn:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-[data-theme="light"] .copy-code-btn:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
-.message-actions {
-    display: flex;
-    gap: 0.5rem;
-    padding-top: 0.5rem;
-    opacity: 0;
-    transition: all 0.2s ease-in-out;
-}
-
-.assistant-message:hover .message-actions {
-    opacity: 1;
-}
-.assistant-message .message-body:hover .message-actions {
-    opacity: 1;
-}
-
-.copy-full-btn {
     background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.citation-item:hover {
+    background-color: var(--accent-color-translucent);
+    color: var(--accent-color);
+    box-shadow: 0 0 0 1px var(--accent-color);
+}
+.citation-id {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: bold;
+    background-color: var(--border-color);
     color: var(--text-secondary);
-    border: 1px solid var(--border-color);
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    box-shadow: var(--shadow);
+}
+.citation-item:hover .citation-id {
+    background-color: var(--accent-color);
+    color: white;
+}
+.citation-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+}
+.citation-icon {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+}
+.citation-item:hover .citation-icon {
+    color: var(--accent-color);
 }
 
-.copy-full-btn:hover {
-    background-color: var(--border-color);
-    color: var(--text-primary);
+.status-update {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* NEW: Footnote & Citation Styles */
+.message-text sup a.footnote-ref {
+    display: inline-block;
+    background-color: var(--accent-color-translucent);
+    color: var(--accent-color);
+    border-radius: 4px;
+    padding: 1px 5px;
+    text-decoration: none;
+    font-size: 0.75em;
+    font-weight: bold;
+    line-height: 1.2;
+    transition: all 0.2s ease;
+}
+.message-text sup a.footnote-ref:hover {
+    background-color: var(--accent-color);
+    color: white;
+}
+.message-text .footnotes {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+.message-text .footnotes ol {
+    padding-left: 20px;
+}
+.message-text .footnotes li {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+.message-text .footnotes a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+.message-text .footnotes a:hover {
+    text-decoration: underline;
 }

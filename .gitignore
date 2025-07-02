@@ -45,12 +45,7 @@ migrations/
 
 # Uploads
 uploads/
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.pdf
-*.txt
+
 
 
 # IDE

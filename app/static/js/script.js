@@ -9,6 +9,7 @@ const messageInput = document.getElementById('messageInput');
 const actionBtn = document.getElementById('actionBtn');
 const messagesContainer = document.getElementById('messages');
 const searchToggle = document.getElementById('searchToggle');
+const researchToggle = document.getElementById('researchToggle');
 const themeToggle = document.getElementById('themeToggle');
 const userBtn = document.getElementById('userBtn');
 const logoutBtn = document.getElementById('logoutBtn');
@@ -22,6 +23,7 @@ const removeQuoteBtn = document.querySelector('.remove-quote-btn');
 
 // --- State ---
 let searchModeEnabled = false;
+let researchModeEnabled = false;
 
 // --- Initialize Application ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -97,6 +99,9 @@ function setupEventListeners() {
 
     modalCloseBtn.addEventListener('click', closeFileModal);
     fileModal.addEventListener('click', e => { if (e.target === fileModal) closeFileModal(); });
+    if (researchToggle) {
+        researchToggle.addEventListener('click', toggleResearchMode);
+    }
     searchToggle.addEventListener('click', toggleSearch);
     themeToggle.addEventListener('click', toggleTheme);
     userBtn.addEventListener('click', toggleUserDropdown);
@@ -116,7 +121,7 @@ function handleKeyPress(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         if (actionBtn.classList.contains('state-send')) {
-            sendMessage(messageInput.value.trim(), searchModeEnabled, fileUpload.files, null, updateActionButtonState);
+            sendMessage(messageInput.value.trim(), searchModeEnabled, researchModeEnabled, fileUpload.files, null, updateActionButtonState);
         }
     }
 }
@@ -129,7 +134,7 @@ function handleActionButton() {
     if (actionBtn.classList.contains('state-cancel')) {
         cancelCurrentRequest();
     } else if (actionBtn.classList.contains('state-send')) {
-        sendMessage(messageInput.value.trim(), searchModeEnabled, fileUpload.files, null, updateActionButtonState);
+        sendMessage(messageInput.value.trim(), searchModeEnabled, researchModeEnabled, fileUpload.files, null, updateActionButtonState);
     } else {
         toggleRecognition(updateActionButtonState);
     }
@@ -159,12 +164,31 @@ function updateActionButtonState() {
     }
 }
 
+function toggleResearchMode() {
+    researchModeEnabled = !researchModeEnabled;
+    researchToggle.classList.toggle('active', researchModeEnabled);
+    
+    // Disable the other search toggle if research mode is on
+    if (researchModeEnabled && searchToggle.classList.contains('active')) {
+        // Deactivate regular search without triggering its own logic
+        searchModeEnabled = false;
+        searchToggle.classList.remove('active');
+        const statusText = document.querySelector('.search-status span');
+        if(statusText) statusText.textContent = 'Auto-search enabled';
+    }
+    searchToggle.style.pointerEvents = researchModeEnabled ? 'none' : 'auto';
+    searchToggle.style.opacity = researchModeEnabled ? '0.5' : '1';
+}
+
 function toggleSearch() {
+    if (researchModeEnabled) return;
     searchModeEnabled = !searchModeEnabled;
     searchToggle.classList.toggle('active', searchModeEnabled);
     const statusText = document.querySelector('.search-status span');
-    statusText.textContent = searchModeEnabled ? 'Search enabled' : 'Auto-search enabled';
-    statusText.parentElement.style.color = searchModeEnabled ? 'var(--accent-color)' : 'var(--text-muted)';
+    if (statusText) {
+        statusText.textContent = searchModeEnabled ? 'Search enabled' : 'Auto-search enabled';
+        statusText.parentElement.style.color = searchModeEnabled ? 'var(--accent-color)' : 'var(--text-muted)';
+    }
 }
 
 // --- Edit Functions ---
@@ -210,12 +234,12 @@ function saveEdit(saveButton) {
         }
 
         userMessage.remove();
-        sendMessage(newText, searchModeEnabled, null, existingAttachments, updateActionButtonState);
+        sendMessage(newText, searchModeEnabled, researchModeEnabled, null, existingAttachments, updateActionButtonState);
     }
 }
 
 function exitEditMode(editArea) {
-    const userMessage = editArea.closest('.user-message');
+    const userMessage = editArea.closest('.message-edit-area');
     const messageContent = userMessage.querySelector('.message-content');
 
     if (messageContent) messageContent.style.display = '';

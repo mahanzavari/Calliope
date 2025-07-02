@@ -23,6 +23,8 @@ def chat():
     data = request.json
     query = data.get('message', '').strip()
     use_search = data.get('use_search', False)
+    # NEW: Get the research mode flag
+    is_research_mode = data.get('is_research_mode', False)
     chat_id = data.get('chat_id')
 
     if not query and not data.get('is_file_upload_message'):
@@ -31,7 +33,8 @@ def chat():
     def generate():
         """Yields a stream of structured JSON events from the service."""
         try:
-            for event in chat_service.get_response(query, chat_id, use_search):
+            # NEW: Pass the flag to the service
+            for event in chat_service.get_response(query, chat_id, use_search, is_research_mode):
                 yield f'data: {json.dumps(event)}\n\n'
         except Exception as e:
             current_app.logger.error(f"Error in chat stream: {e}", exc_info=True)
@@ -88,7 +91,6 @@ def get_chats():
     """Get user's chat history"""
     try:
         chats = Chat.query.filter_by(user_id=current_user.id).order_by(Chat.updated_at.desc()).all()
-        # FIX: Include the 'updated_at' timestamp in the response
         chat_list = [{
             'id': chat.id,
             'title': chat.title,

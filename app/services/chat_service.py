@@ -48,9 +48,10 @@ class ChatService:
         
         return chat
 
-    def get_response(self, query: str, chat_id: int = None, use_rag: bool = False) -> Generator[dict, None, None]:
+    def get_response(self, query: str, chat_id: int = None, use_rag: bool = False, is_research_mode: bool = False) -> Generator[dict, None, None]:
         full_bot_response = ""
         new_title_generated = None
+        sources_for_response = None # To hold sources for the final event
         try:
             if not query or not query.strip():
                 yield {"type": "error", "message": "Query cannot be empty"}
@@ -59,40 +60,72 @@ class ChatService:
             chat = self._get_or_create_chat(chat_id)
             yield {"type": "chat_info", "chat_id": chat.id}
 
-            # --- CONTEXT ASSEMBLY (NOW WITH LONG-TERM MEMORY) ---
-            messages = [
-                SystemMessage(content="You are a helpful AI assistant. Be conversational and provide detailed, helpful responses.")
-            ]
+            messages = []
+            
+            # --- RESEARCH MODE ---
+            if is_research_mode:
+                yield {"type": "status", "message": "Performing research..."}
+                rag_data = self.rag_service.get_context(query)
+                rag_context = rag_data.get("context")
+                sources_for_response = rag_data.get("sources") # Store sources
 
-            # 1. Add relevant long-term memories.
-            relevant_memories = self.user_memory_service.get_relevant_memories(user_id=current_user.id)
-            if relevant_memories:
-                memory_context = "\n".join([f"- {mem.content}" for mem in relevant_memories])
-                messages.append(SystemMessage(content=f"To personalize your response, remember these key facts about the user:\n{memory_context}"))
+                if not rag_context or not sources_for_response:
+                    yield {"type": "error", "message": "Could not find relevant information for your query."}
+                    return
 
-            # --- RAG Integration ---
-            if use_rag:
-                rag_context = self.rag_service.get_context(query)
-                if rag_context:
-                    messages.append(SystemMessage(content=f"Here is some information from a web search to help you answer the user's query:\n{rag_context}"))
+                source_list_for_prompt = "\n".join([f"[{s['id']}] {s['title']}" for s in sources_for_response])
 
-            # 2. Add the summary of the current chat for session context.
-            if chat.summary and chat.summary.detailed_summary and chat.summary.detailed_summary != "This is the beginning of a new conversation.":
-                 messages.append(SystemMessage(content=f"Here is a summary of the current conversation so far: {chat.summary.detailed_summary}"))
+                # FIX: Updated the prompt with clearer instructions for clickable citations
+                research_prompt = f"""
+You are a meticulous Research Assistant. Your goal is to provide a comprehensive, well-structured answer to the user's query based *only* on the provided research material.
 
-            # 3. Add recent messages for immediate turn-by-turn context.
-            recent_messages = Message.query.filter_by(chat_id=chat.id).order_by(Message.created_at.desc()).limit(10).all()
-            recent_messages.reverse() 
+**Instructions:**
+1.  Synthesize the information from the provided sources to construct your answer.
+2.  Do **not** use any information outside of the provided text.
+3.  You **must** cite your sources by placing a footnote reference marker **immediately after** the relevant text. The marker format is `[^id]`, where 'id' is the source number. For example, a claim from the first source should be followed by `[^1]`.
+4.  If multiple sources support a single point, you can cite them together, like `[^1][^3]`.
+5.  At the end of your entire response, create a "Citations" section by defining the footnotes. The format for each footnote definition is `[^{{id}}]: [{{Title}}]({{{{URL}}}}`.
 
-            for msg in recent_messages:
-                if msg.role == 'user':
-                    messages.append(HumanMessage(content=msg.content))
-                elif msg.role == 'assistant':
-                    messages.append(AIMessage(content=msg.content))
+**Provided Research Material:**
+---
+{rag_context}
+---
 
-            # 4. Finally, add the current user query.
+**Sources to Cite:**
+{source_list_for_prompt}
+
+Based on this material, please answer the user's query.
+"""
+                messages.append(SystemMessage(content=research_prompt))
+            
+            # --- REGULAR CHAT MODE ---
+            else:
+                messages.append(SystemMessage(content="You are a helpful AI assistant. Be conversational and provide detailed, helpful responses."))
+                
+                relevant_memories = self.user_memory_service.get_relevant_memories(user_id=current_user.id)
+                if relevant_memories:
+                    memory_context = "\n".join([f"- {mem.content}" for mem in relevant_memories])
+                    messages.append(SystemMessage(content=f"To personalize your response, remember these key facts about the user:\n{memory_context}"))
+
+                if use_rag:
+                    yield {"type": "status", "message": "Searching the web..."}
+                    rag_data = self.rag_service.get_context(query)
+                    rag_context = rag_data.get("context")
+                    if rag_context:
+                        messages.append(SystemMessage(content=f"Here is some information from a web search to help you answer the user's query:\n{rag_context}"))
+                
+                if chat.summary and chat.summary.detailed_summary and chat.summary.detailed_summary != "This is the beginning of a new conversation.":
+                    messages.append(SystemMessage(content=f"Here is a summary of the current conversation so far: {chat.summary.detailed_summary}"))
+
+                recent_messages = Message.query.filter_by(chat_id=chat.id).order_by(Message.created_at.desc()).limit(10).all()
+                recent_messages.reverse() 
+                for msg in recent_messages:
+                    if msg.role == 'user': messages.append(HumanMessage(content=msg.content))
+                    elif msg.role == 'assistant': messages.append(AIMessage(content=msg.content))
+
             messages.append(HumanMessage(content=query.strip()))
             
+            yield {"type": "status", "message": "Generating response..."}
             for chunk in self.llm.stream(messages):
                 if hasattr(chunk, 'content') and chunk.content:
                     content = chunk.content
@@ -106,8 +139,8 @@ class ChatService:
                 if is_new_chat:
                     new_title_generated = self._generate_title_for_chat(chat, query, full_bot_response)
                 
-                self.memory_extractor.extract_memories_from_chat(chat)
-
+                if not is_research_mode:
+                    self.memory_extractor.extract_memories_from_chat(chat)
             else:
                 yield {"type": "error", "message": "No response generated"}
 
@@ -115,9 +148,11 @@ class ChatService:
             logging.error(f"An unexpected error in ChatService: {e}", exc_info=True)
             yield {"type": "error", "message": f"An unexpected error occurred: {str(e)}"}
         finally:
+            if sources_for_response:
+                yield {"type": "sources", "data": sources_for_response}
             if new_title_generated:
                 yield {"type": "title_update", "chat_id": chat.id, "title": new_title_generated}
-
+    
     def _generate_title_for_chat(self, chat: Chat, user_message: str, bot_response: str) -> str:
         try:
             prompt = f"""Based on the following conversation, create a very short, concise title (4-5 words max).
@@ -163,7 +198,6 @@ class ChatService:
             summary_data = None
 
             try:
-                # Find the start and end of the JSON object
                 start_index = raw_content.find('{')
                 end_index = raw_content.rfind('}')
                 
@@ -171,7 +205,6 @@ class ChatService:
                     json_str = raw_content[start_index:end_index+1]
                     summary_data = json.loads(json_str)
                 else:
-                    # If no JSON object is found, log it and exit gracefully
                     logging.warning(f"No JSON object found in the LLM summary response. Raw content: '{raw_content}'")
                     return
 

@@ -318,3 +318,37 @@
         opacity: 1;
     }
 }
+
+/* Add at the end of static/css/components/_input.css */
+
+.footer-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.research-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.research-toggle:hover {
+    border-color: var(--accent-color);
+    color: var(--text-primary);
+}
+
+.research-toggle.active {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
