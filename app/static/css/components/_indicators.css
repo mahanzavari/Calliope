@@ -1,0 +1,77 @@
+/* /app/static/css/components/_indicators.css */
+
+/* 3-dot typing indicator */
+.typing-indicator {
+     display: flex;
+     align-items: center;
+     padding: 1rem 0;
+ }
+ 
+ .typing-indicator span {
+     height: 10px;
+     width: 10px;
+     margin: 0 3px;
+     background-color: var(--text-muted);
+     border-radius: 50%;
+     display: inline-block;
+     animation: pulse-dot 1.4s infinite ease-in-out both;
+ }
+ 
+ .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+ .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+ 
+ @keyframes pulse-dot {
+     0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); }
+ }
+ 
+ /* RAG Searching Indicator */
+ .searching-indicator {
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     gap: 0.75rem;
+     padding: 0.5rem 1rem;
+     color: var(--text-secondary);
+     font-size: 0.9em;
+ }
+ 
+ .searching-indicator .book-icon {
+     font-size: 1.5em;
+     position: relative;
+     animation: flip-page 1.5s infinite linear;
+ }
+ 
+ .searching-indicator .search-icon {
+     font-size: 1.2em;
+     color: var(--accent-color);
+ }
+ 
+ @keyframes flip-page {
+     0% { transform: rotateY(0deg); }
+     50% { transform: rotateY(180deg); }
+     100% { transform: rotateY(0deg); }
+ }
+ 
+ /* Quote Popup on Text Selection */
+ .quote-popup {
+     position: absolute;
+     background-color: var(--accent-color);
+     color: white;
+     border: none;
+     border-radius: 8px;
+     padding: 6px 12px;
+     cursor: pointer;
+     z-index: 1001;
+     box-shadow: var(--shadow);
+     display: flex;
+     align-items: center;
+     gap: 0.5rem;
+     font-size: 0.875rem;
+     font-weight: 500;
+     transition: transform 0.1s ease, background-color 0.2s ease;
+ }
+ 
+ .quote-popup:hover {
+     background-color: var(--accent-hover);
+     transform: scale(1.05);
+ }

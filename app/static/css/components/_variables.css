@@ -1,0 +1,55 @@
+:root {
+     /* Light theme */
+     --bg-primary: #ffffff;
+     --bg-secondary: #f8f9fa;
+     --bg-tertiary: #e9ecef;
+     --text-primary: #212529;
+     --text-secondary: #6c757d;
+     --text-muted: #adb5bd;
+     --border-color: #dee2e6;
+     --border-light: #e9ecef;
+     --accent-color: #007bff;
+     --accent-hover: #0056b3;
+     --success-color: #28a745;
+     --error-color: #dc3545;
+     --warning-color: #ffc107;
+     --message-bg-user: #007bff;
+     --message-bg-bot: #f8f9fa;
+     --message-text-user: #ffffff;
+     --message-text-bot: #212529;
+     --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+     --shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.15);
+     
+     /* MODIFICATION: Added variables for light theme code blocks */
+     --code-bg: #f6f8fa;
+     --code-text: #24292e;
+     --accent-color-translucent: rgba(0, 123, 255, 0.1);
+ }
+ 
+ [data-theme="dark"] {
+     /* Dark theme */
+     --bg-primary: #1a1a1a;
+     --bg-secondary: #2d2d2d;
+     --bg-tertiary: #404040;
+     --text-primary: #ffffff;
+     --text-secondary: #b0b0b0;
+     --text-muted: #808080;
+     --border-color: #404040;
+     --border-light: #2d2d2d;
+     --accent-color: #4dabf7;
+     --accent-hover: #339af0;
+     --success-color: #51cf66;
+     --error-color: #ff6b6b;
+     --warning-color: #ffd43b;
+     --message-bg-user: #4dabf7;
+     --message-bg-bot: #2d2d2d;
+     --message-text-user: #ffffff;
+     --message-text-bot: #ffffff;
+     --shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+     --shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.4);
+
+     /* MODIFICATION: Added variables for dark theme code blocks to match GitHub Dark */
+     --code-bg: #0d1117;
+     --code-text: #c9d1d9;
+     --accent-color-translucent: rgba(77, 171, 247, 0.1);
+ }

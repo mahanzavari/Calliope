@@ -27,11 +27,5 @@ def register():
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """User dashboard"""
+    """User dashboard with integrated memory management."""
     return render_template('auth/dashboard.html')
-
-@main_bp.route('/memory_dashboard')
-@login_required
-def memory_dashboard():
-    """Memory management dashboard"""
-    return render_template('memory_dashboard.html')

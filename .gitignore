@@ -51,13 +51,7 @@ uploads/
 *.gif
 *.pdf
 *.txt
-*.py
-# *.js
-*.html
-*.css
-*.java
-*.cpp
-*.c
+
 
 # IDE
 .vscode/
