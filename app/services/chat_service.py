@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from app.core.extensions import db
 from app.models import Chat, Message, ChatSummary
 from flask_login import current_user
+from app.services.rag_service import RAGService
 from .memory_service import UserMemoryService, MemoryExtractionService
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,6 +28,7 @@ class ChatService:
         # Instantiate services
         self.user_memory_service = UserMemoryService()
         self.memory_extractor = MemoryExtractionService(llm=self.utility_llm)
+        self.rag_service = RAGService() # Initialize RAGService
 
     def _get_or_create_chat(self, chat_id: int = None):
         chat = None
@@ -67,6 +69,12 @@ class ChatService:
             if relevant_memories:
                 memory_context = "\n".join([f"- {mem.content}" for mem in relevant_memories])
                 messages.append(SystemMessage(content=f"To personalize your response, remember these key facts about the user:\n{memory_context}"))
+
+            # --- RAG Integration ---
+            if use_rag:
+                rag_context = self.rag_service.get_context(query)
+                if rag_context:
+                    messages.append(SystemMessage(content=f"Here is some information from a web search to help you answer the user's query:\n{rag_context}"))
 
             # 2. Add the summary of the current chat for session context.
             if chat.summary and chat.summary.detailed_summary and chat.summary.detailed_summary != "This is the beginning of a new conversation.":

@@ -2,6 +2,7 @@ import { audioBlob, cancelAudioRecording } from './audio.js';
 import { removeFilePreview } from './ui.js';
 import { quotedText, removeQuote } from './quote.js';
 import { setActiveChatId, updateChatTitleInList } from './history.js';
+import * as ui from './ui.js';
 
 const messagesContainer = document.getElementById('messages');
 const fileUpload = document.getElementById('fileUpload');
@@ -99,6 +100,41 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
     const botMessageDiv = addMessageToUI('assistant', '', true);
     const botTextDiv = botMessageDiv.querySelector('.message-text');
     let accumulatedResponse = "";
+    let wordQueue = [];
+    let streamingInterval = null;
+    let pendingRender = false;
+    let streamFinished = false;
+
+    function processWordQueue() {
+        if (wordQueue.length > 0) {
+            const word = wordQueue.shift();
+            if (word) { 
+                accumulatedResponse += word;
+                if (!pendingRender) {
+                    pendingRender = true;
+                    requestAnimationFrame(renderBotResponse);
+                }
+            }
+        } else if (streamFinished) {
+            clearInterval(streamingInterval);
+            streamingInterval = null;
+            requestAnimationFrame(() => {
+                botTextDiv.innerHTML = marked.parse(accumulatedResponse);
+                botTextDiv.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+        }
+    }
+
+    function renderBotResponse() {
+        const cursor = `<span class="typing-cursor"></span>`;
+        botTextDiv.innerHTML = marked.parse(accumulatedResponse + cursor);
+        botTextDiv.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        pendingRender = false;
+    }
 
     try {
         const response = await fetch('/api/chat', {
@@ -122,7 +158,13 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
 
         while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+                streamFinished = true;
+                if (wordQueue.length === 0) {
+                    processWordQueue(); 
+                }
+                break;
+            }
             
             const chunk = decoder.decode(value, { stream: true });
             const lines = chunk.split('\n\n');
@@ -146,9 +188,13 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
                                 if (botTextDiv.querySelector('.typing-indicator')) {
                                     botTextDiv.innerHTML = ''; 
                                 }
-                                accumulatedResponse += data.content;
-                                botTextDiv.textContent = accumulatedResponse;
-                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                const words = data.content.split(/(\s+)/);
+                                wordQueue.push(...words);
+
+                                if (!streamingInterval) {
+                                    // FIX: Reduced interval for faster streaming
+                                    streamingInterval = setInterval(processWordQueue, 5); 
+                                }
                                 break;
                             case 'title_update':
                                 updateChatTitleInList(data.chat_id, data.title);
@@ -164,12 +210,6 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
             }
         }
         
-        botTextDiv.innerHTML = marked.parse(accumulatedResponse);
-        
-        botTextDiv.querySelectorAll('pre code').forEach((block) => {
-            hljs.highlightElement(block);
-        });
-
         botTextDiv.querySelectorAll('pre').forEach(pre => {
             const codeCopyBtn = document.createElement('button');
             codeCopyBtn.className = 'copy-code-btn';
@@ -188,6 +228,7 @@ export async function sendMessage(message, isSearchEnabled, files, existingAttac
         }
         
     } catch (error) {
+        if (streamingInterval) clearInterval(streamingInterval);
         if (error.name === 'AbortError') {
             console.log('Fetch aborted by user.');
             if (accumulatedResponse) {
@@ -221,7 +262,6 @@ async function uploadFile(file) {
     }
 }
 
-// FIX: Export this function so history.js can use it.
 export function addMessageToUI(role, content, isStreaming = false, quotedText = '') {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}-message`;
@@ -266,7 +306,6 @@ export function addMessageToUI(role, content, isStreaming = false, quotedText = 
     if (content.isError) {
         textDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>${content.text}</span>`;
     } else if (role === 'user') {
-        // For loaded user messages, content is an object { text: '...' }
         if (content.text) textDiv.innerHTML = marked.parse(content.text);
         if (content.audio) {
             const audioEl = document.createElement('audio');
@@ -275,7 +314,6 @@ export function addMessageToUI(role, content, isStreaming = false, quotedText = 
             contentDiv.appendChild(audioEl);
         }
     } else {
-        // For assistant messages, content is just a string
         textDiv.innerHTML = isStreaming ? `<div class="typing-indicator"><span></span><span></span><span></span></div>` : marked.parse(content);
     }
     
@@ -284,8 +322,12 @@ export function addMessageToUI(role, content, isStreaming = false, quotedText = 
     }
 
     if (role === 'user' && !isStreaming) {
-        // Don't add edit button to old messages for now to keep it simple,
-        // but you could add a condition here to show it on the last user message.
+        // FIX: Create and append the edit button for user messages
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+        editBtn.title = 'Edit Message';
+        messageDiv.appendChild(editBtn);
     }
     
     if (contentDiv.hasChildNodes()) {
@@ -295,26 +337,23 @@ export function addMessageToUI(role, content, isStreaming = false, quotedText = 
     if (role === 'assistant') {
         const actions = document.createElement('div');
         actions.className = 'message-actions';
-        // Add copy buttons etc. to loaded messages too
         const fullCopyBtn = document.createElement('button');
         fullCopyBtn.className = 'copy-full-btn';
         fullCopyBtn.title = 'Copy full message';
         fullCopyBtn.innerHTML = '<i class="fas fa-copy"></i>';
         actions.appendChild(fullCopyBtn);
-
         messageBodyWrapper.appendChild(actions);
     }
     
     messageDiv.appendChild(messageBodyWrapper);
     messagesContainer.appendChild(messageDiv);
     
-    // Final post-processing for non-streaming messages
     if (!isStreaming) {
         textDiv.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightElement(block);
         });
         textDiv.querySelectorAll('pre').forEach(pre => {
-             if (!pre.querySelector('.copy-code-btn')) { // Avoid adding duplicate buttons
+             if (!pre.querySelector('.copy-code-btn')) {
                 const codeCopyBtn = document.createElement('button');
                 codeCopyBtn.className = 'copy-code-btn';
                 codeCopyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';

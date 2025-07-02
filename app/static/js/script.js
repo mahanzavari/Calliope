@@ -1,8 +1,8 @@
 import { toggleTheme, loadTheme, toggleUserDropdown, handleLogout, handleFileSelected, removeFilePreview, setupAutoResize, updateCharCount, copyToClipboard } from './modules/ui.js';
 import { toggleRecognition, getIsRecognizing } from './modules/stt.js';
-import { handleTextSelection } from './modules/quote.js';
 import { sendMessage, cancelCurrentRequest, getIsProcessing } from './modules/chat.js';
 import { initializeChatHistory } from './modules/history.js';
+import { handleTextSelection, removeQuote } from './modules/quote.js';
 
 // --- DOM Elements ---
 const messageInput = document.getElementById('messageInput');
@@ -18,6 +18,7 @@ const fileModal = document.getElementById('fileModal');
 const modalFileName = document.getElementById('modalFileName');
 const modalFileContent = document.getElementById('modalFileContent');
 const modalCloseBtn = document.getElementById('modalCloseBtn');
+const removeQuoteBtn = document.querySelector('.remove-quote-btn');
 
 // --- State ---
 let searchModeEnabled = false;
@@ -81,6 +82,9 @@ function setupEventListeners() {
             const codeEl = codeCopyBtn.previousElementSibling;
             if (codeEl) copyToClipboard(codeEl.textContent, codeCopyBtn);
             return;
+        }
+        if (removeQuoteBtn) {
+            removeQuoteBtn.addEventListener('click', removeQuote);
         }
 
         const fullCopyBtn = e.target.closest('.copy-full-btn');
