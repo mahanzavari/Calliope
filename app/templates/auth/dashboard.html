@@ -17,11 +17,11 @@
             <div class="nav-links">
                 <a href="/" class="nav-link">
                     <i class="fas fa-comments"></i>
-                    Chat
+                    <span>Chat</span>
                 </a>
                 <a href="/dashboard" class="nav-link active">
                     <i class="fas fa-tachometer-alt"></i>
-                    Dashboard
+                    <span>Dashboard</span>
                 </a>
             </div>
             <div class="nav-user">
@@ -35,71 +35,94 @@
         </nav>
 
         <main class="dashboard-main">
-            <div class="dashboard-header">
-                <h2>Welcome back, <span id="userName">User</span>!</h2>
-                <p>Here's your activity overview</p>
+            <div class="dashboard-tabs">
+                <button class="tab-link active" data-tab="overview">
+                    <i class="fas fa-tachometer-alt"></i> Overview
+                </button>
+                <button class="tab-link" data-tab="memory">
+                    <i class="fas fa-brain"></i> Memory
+                </button>
             </div>
 
-            <div class="dashboard-stats">
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-comments"></i>
+            <!-- Overview Tab Content -->
+            <div id="overview" class="tab-content active">
+                <div class="dashboard-header">
+                    <h2>Welcome back, <span id="userName">User</span>!</h2>
+                    <p>Here's your activity overview</p>
+                </div>
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-comments"></i></div>
+                        <div class="stat-content"><h3 id="totalChats">0</h3><p>Total Chats</p></div>
                     </div>
-                    <div class="stat-content">
-                        <h3 id="totalChats">0</h3>
-                        <p>Total Chats</p>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-message"></i></div>
+                        <div class="stat-content"><h3 id="totalMessages">0</h3><p>Total Messages</p></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-calendar"></i></div>
+                        <div class="stat-content"><h3 id="daysActive">0</h3><p>Days Active</p></div>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-message"></i>
+                <div class="dashboard-content-grid">
+                    <div class="recent-chats">
+                        <h3>Recent Chats</h3>
+                        <div class="chat-list" id="chatList">
+                            <div class="empty-state"><i class="fas fa-comments"></i><p>No chats yet</p><a href="/" class="btn-primary">Start a conversation</a></div>
+                        </div>
                     </div>
-                    <div class="stat-content">
-                        <h3 id="totalMessages">0</h3>
-                        <p>Total Messages</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-calendar"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3 id="daysActive">0</h3>
-                        <p>Days Active</p>
+                    <div class="user-profile">
+                        <h3>Profile Settings</h3>
+                        <form id="profileForm" class="profile-form">
+                            <div class="form-group"><label for="profileUsername">Username</label><input type="text" id="profileUsername" name="username" required></div>
+                            <div class="form-group"><label for="profileEmail">Email</label><input type="email" id="profileEmail" name="email" required></div>
+                            <button type="submit" class="btn-primary">Update Profile</button>
+                        </form>
                     </div>
                 </div>
             </div>
 
-            <div class="dashboard-content">
-                <div class="recent-chats">
-                    <h3>Recent Chats</h3>
-                    <div class="chat-list" id="chatList">
-                        <div class="empty-state">
-                            <i class="fas fa-comments"></i>
-                            <p>No chats yet</p>
-                            <a href="/" class="btn-primary">Start a conversation</a>
+            <!-- Memory Tab Content -->
+            <div id="memory" class="tab-content">
+                <div class="memory-dashboard-content">
+                    <aside class="memory-sidebar">
+                        <h3>Categories</h3>
+                        <ul id="categoryList" class="category-list">
+                            <div class="empty-state"><p>Loading...</p></div>
+                        </ul>
+                        <button id="addMemoryBtn" class="btn-primary"><i class="fas fa-plus"></i> Add Memory</button>
+                    </aside>
+                    <section class="memory-main-view">
+                        <div id="memoryList" class="memory-list">
+                            <div class="empty-state"><i class="fas fa-brain"></i><p>Select a category to view memories.</p></div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="user-profile">
-                    <h3>Profile Settings</h3>
-                    <form id="profileForm" class="profile-form">
-                        <div class="form-group">
-                            <label for="profileUsername">Username</label>
-                            <input type="text" id="profileUsername" name="username" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="profileEmail">Email</label>
-                            <input type="email" id="profileEmail" name="email" required>
-                        </div>
-                        <button type="submit" class="btn-primary">Update Profile</button>
-                    </form>
+                    </section>
                 </div>
             </div>
         </main>
     </div>
 
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <!-- Modal for Adding/Editing Memories -->
+    <div id="memoryModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Memory</h2>
+                <button id="modalCloseBtn" class="close-btn">&times;</button>
+            </div>
+            <form id="memoryForm" class="modal-body">
+                <input type="hidden" id="memoryId">
+                <div class="form-group"><label for="memoryTitle">Title</label><input type="text" id="memoryTitle" required></div>
+                <div class="form-group"><label for="memoryCategory">Category</label><select id="memoryCategory" required></select></div>
+                <div class="form-group"><label for="memoryContent">Content</label><textarea id="memoryContent" rows="5" required></textarea></div>
+                <div class="form-group"><label for="memoryImportance">Importance (0.0 - 1.0)</label><input type="range" id="memoryImportance" min="0" max="1" step="0.1" value="0.5"></div>
+                <div class="modal-footer">
+                    <button type="button" id="deleteMemoryBtn" class="btn-danger" style="display: none;">Delete</button>
+                    <button type="submit" class="btn-primary">Save Memory</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
-</html> 
+</html>

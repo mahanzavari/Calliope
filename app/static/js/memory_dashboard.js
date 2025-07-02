@@ -1,50 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
-     // --- COMMON UI HANDLERS ---
-     const userBtn = document.getElementById('userBtn');
-     const userDropdown = document.getElementById('userDropdown');
-     const logoutBtn = document.getElementById('logoutBtn');
- 
-     if (userBtn) {
-         userBtn.addEventListener('click', () => userDropdown.classList.toggle('show'));
-     }
- 
-     if (logoutBtn) {
-         logoutBtn.addEventListener('click', async () => {
-             await fetch('/auth/logout', { method: 'POST' });
-             window.location.href = '/login';
-         });
-     }
- 
-     document.addEventListener('click', (e) => {
-         if (userDropdown && !userBtn.contains(e.target) && !userDropdown.contains(e.target)) {
-             userDropdown.classList.remove('show');
-         }
-     });
- 
-     // --- TAB SWITCHING LOGIC ---
-     const tabLinks = document.querySelectorAll('.tab-link');
-     const tabContents = document.querySelectorAll('.tab-content');
- 
-     tabLinks.forEach(link => {
-         link.addEventListener('click', () => {
-             const tabId = link.dataset.tab;
- 
-             tabLinks.forEach(l => l.classList.remove('active'));
-             link.classList.add('active');
- 
-             tabContents.forEach(content => {
-                 content.classList.remove('active');
-                 if (content.id === tabId) {
-                     content.classList.add('active');
-                 }
-             });
-         });
-     });
- 
-     // --- MEMORY DASHBOARD LOGIC ---
+     // State
      let currentCategoryId = null;
      let categories = [];
  
+     // DOM Elements
      const categoryList = document.getElementById('categoryList');
      const memoryList = document.getElementById('memoryList');
      const addMemoryBtn = document.getElementById('addMemoryBtn');
@@ -59,15 +18,25 @@ document.addEventListener('DOMContentLoaded', () => {
      const memoryContentInput = document.getElementById('memoryContent');
      const memoryImportanceInput = document.getElementById('memoryImportance');
  
+     // --- API Functions ---
      const api = {
          getCategories: () => fetch('/api/memories/categories').then(res => res.json()),
          getMemories: (categoryId) => fetch(`/api/memories?category_id=${categoryId}`).then(res => res.json()),
-         createMemory: (data) => fetch('/api/memories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(res => res.json()),
-         updateMemory: (id, data) => fetch(`/api/memories/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(res => res.json()),
+         createMemory: (data) => fetch('/api/memories', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(data)
+         }).then(res => res.json()),
+         updateMemory: (id, data) => fetch(`/api/memories/${id}`, {
+             method: 'PUT',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(data)
+         }).then(res => res.json()),
          deleteMemory: (id) => fetch(`/api/memories/${id}`, { method: 'DELETE' }).then(res => res.json()),
          verifyMemory: (id) => fetch(`/api/memories/${id}/verify`, { method: 'POST' }).then(res => res.json())
      };
  
+     // --- Render Functions ---
      function renderCategories() {
          categoryList.innerHTML = '';
          categories.forEach(cat => {
@@ -112,6 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
          });
      }
  
+     // --- Modal Logic ---
      function openModal(memory = null) {
          memoryForm.reset();
          if (memory) {
@@ -134,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
          modal.style.display = 'none';
      }
  
+     // --- Event Handlers ---
      async function handleCategoryClick(e) {
          const target = e.target.closest('.category-item');
          if (target) {
@@ -153,13 +124,14 @@ document.addEventListener('DOMContentLoaded', () => {
              category_id: parseInt(memoryCategoryInput.value, 10),
              importance_score: parseFloat(memoryImportanceInput.value)
          };
+ 
          const response = id ? await api.updateMemory(id, data) : await api.createMemory(data);
          if (response.success) {
              closeModal();
              const memoriesData = await api.getMemories(currentCategoryId);
              renderMemories(memoriesData.memories);
          } else {
-             alert(`Error: ${response.error || 'An unknown error occurred'}`);
+             alert(`Error: ${response.error}`);
          }
      }
  
@@ -180,9 +152,11 @@ document.addEventListener('DOMContentLoaded', () => {
      async function handleMemoryActionClick(e) {
          const memoryItem = e.target.closest('.memory-item');
          if (!memoryItem) return;
+         
          const memoryId = parseInt(memoryItem.dataset.memoryId, 10);
  
          if (e.target.closest('.edit-btn')) {
+             // Fetch full memory details to edit
              const memoriesData = await api.getMemories(currentCategoryId);
              const memoryToEdit = memoriesData.memories.find(m => m.id === memoryId);
              if(memoryToEdit) openModal(memoryToEdit);
@@ -197,9 +171,9 @@ document.addEventListener('DOMContentLoaded', () => {
          }
      }
  
-     async function initializeMemoryDashboard() {
-         if (!categoryList) return; // Only run if memory elements are on the page
-         
+     // --- Initialization ---
+     async function initialize() {
+         // Event Listeners
          categoryList.addEventListener('click', handleCategoryClick);
          addMemoryBtn.addEventListener('click', () => openModal());
          modalCloseBtn.addEventListener('click', closeModal);
@@ -208,10 +182,14 @@ document.addEventListener('DOMContentLoaded', () => {
          deleteMemoryBtn.addEventListener('click', handleDeleteMemory);
          memoryList.addEventListener('click', handleMemoryActionClick);
          
+         // Initial Data Load
          categories = await api.getCategories();
          renderCategories();
+ 
+         // Populate category dropdown in modal
          memoryCategoryInput.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
          
+         // Select first category by default
          if (categories.length > 0) {
              currentCategoryId = categories[0].id;
              renderCategories();
@@ -220,6 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
          }
      }
  
-     initializeMemoryDashboard();
+     initialize();
  });
  

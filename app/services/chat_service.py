@@ -1,33 +1,32 @@
 import os
 import logging
 import re
+import json
 from typing import Generator
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from app.core.extensions import db
-from app.models import Chat, Message
+from app.models import Chat, Message, ChatSummary
 from flask_login import current_user
+from .memory_service import MemoryExtractionService
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class ChatService:
     def __init__(self):
-        # FIX 1: Removed the legacy `streaming=True` argument.
-        # The .stream() method handles streaming automatically.
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash",
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
             temperature=0.7
         )
-        # A separate, non-streaming LLM for tasks like titling and summarizing
         self.utility_llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash",
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
             temperature=0.3
         )
+        self.memory_extractor = MemoryExtractionService(llm=self.utility_llm)
 
     def _get_or_create_chat(self, chat_id: int = None):
-        # FIX 2: Removed memory management from this function. It now only handles the Chat object.
         chat = None
         if chat_id:
             chat = Chat.query.filter_by(id=chat_id, user_id=current_user.id).first()
@@ -35,14 +34,18 @@ class ChatService:
         if not chat:
             chat = Chat(user_id=current_user.id, title="New Chat")
             db.session.add(chat)
+            # Create an initial empty summary object
+            chat.summary = ChatSummary(
+                short_summary="Chat just started.",
+                detailed_summary="This is the beginning of a new conversation.",
+                key_topics=[],
+                extracted_facts=[]
+            )
             db.session.commit()
         
         return chat
 
     def get_response(self, query: str, chat_id: int = None, use_rag: bool = False) -> Generator[dict, None, None]:
-        """
-        Yields a stream of dictionary events: chat info, response chunks, and title updates.
-        """
         full_bot_response = ""
         new_title_generated = None
         try:
@@ -53,16 +56,13 @@ class ChatService:
             chat = self._get_or_create_chat(chat_id)
             yield {"type": "chat_info", "chat_id": chat.id}
 
-            # Get history directly from the chat summary.
-            history = chat.summary or "No previous conversation."
+            # Get history from the detailed summary
+            history = chat.summary.detailed_summary if chat.summary else "No previous conversation."
             
-            messages = []
-            if history and history != "No previous conversation.":
-                messages.append(SystemMessage(content=f"You are a helpful AI assistant. Previous conversation context: {history}"))
-            else:
-                messages.append(SystemMessage(content="You are a helpful AI assistant. Be conversational and provide detailed, helpful responses."))
-            
-            messages.append(HumanMessage(content=query.strip()))
+            messages = [
+                SystemMessage(content=f"You are a helpful AI assistant. Previous conversation context: {history}"),
+                HumanMessage(content=query.strip())
+            ]
             
             for chunk in self.llm.stream(messages):
                 if hasattr(chunk, 'content') and chunk.content:
@@ -76,6 +76,10 @@ class ChatService:
                 
                 if is_new_chat:
                     new_title_generated = self._generate_title_for_chat(chat, query, full_bot_response)
+                
+                # Asynchronously extract memories (in a real app, this would be a background task)
+                self.memory_extractor.extract_memories_from_chat(chat)
+
             else:
                 yield {"type": "error", "message": "No response generated"}
 
@@ -86,15 +90,11 @@ class ChatService:
             if new_title_generated:
                 yield {"type": "title_update", "chat_id": chat.id, "title": new_title_generated}
 
-
     def _generate_title_for_chat(self, chat: Chat, user_message: str, bot_response: str) -> str:
-        """Generates and saves a title for the chat."""
         try:
             prompt = f"""Based on the following conversation, create a very short, concise title (4-5 words max).
-            
             User: "{user_message}"
             Assistant: "{bot_response[:200]}..."
-            
             Title:"""
             
             response = self.utility_llm.invoke([HumanMessage(content=prompt)])
@@ -109,41 +109,54 @@ class ChatService:
             db.session.rollback()
         return None
 
-    # NEW: Function to replace ConversationSummaryMemory
-    def _update_summary(self, existing_summary: str, user_message: str, bot_response: str) -> str:
-        """Explicitly updates the conversation summary."""
+    def _update_chat_summary(self, chat: Chat, user_message: str, bot_response: str):
+        """Generates and saves layered summaries for the chat."""
         try:
-            prompt = f"""Please create a concise summary of the following new turn of a conversation,
-            taking into account the existing summary.
+            summary_prompt = f"""
+            Given the previous conversation summary and the latest interaction, please provide an updated, layered summary in JSON format.
 
-            Existing Summary:
-            "{existing_summary}"
+            Previous Detailed Summary:
+            "{chat.summary.detailed_summary if chat.summary else 'None'}"
 
-            New Interaction:
+            Latest Interaction:
             User: "{user_message}"
             Assistant: "{bot_response}"
 
-            New, updated summary:"""
-            
-            response = self.utility_llm.invoke([HumanMessage(content=prompt)])
-            return response.content.strip()
-        except Exception as e:
-            logging.error(f"Error updating summary: {e}", exc_info=True)
-            # Fallback to a simpler summary if the LLM call fails
-            return existing_summary + f"\nUser: {user_message}\nAssistant: {bot_response}"
+            Respond with a JSON object containing these keys:
+            - "short_summary": A new, one-sentence summary of the entire conversation so far.
+            - "detailed_summary": An updated, comprehensive summary of the entire conversation.
+            - "key_topics": An array of 1-3 word strings representing the main topics of the latest interaction.
+            - "extracted_facts": An array of strings, where each string is a potential long-term memory fact about the user (e.g., "User's favorite color is blue", "User is a software engineer"). Extract only from the latest interaction.
 
+            JSON Response:
+            """
+            response = self.utility_llm.invoke([HumanMessage(content=summary_prompt)])
+            summary_data = json.loads(response.content)
+
+            if not chat.summary:
+                chat.summary = ChatSummary(chat_id=chat.id)
+            
+            chat.summary.short_summary = summary_data.get("short_summary", chat.summary.short_summary)
+            chat.summary.detailed_summary = summary_data.get("detailed_summary", chat.summary.detailed_summary)
+            chat.summary.key_topics = summary_data.get("key_topics", chat.summary.key_topics)
+            chat.summary.extracted_facts = summary_data.get("extracted_facts", chat.summary.extracted_facts)
+            chat.summary.summary_version += 1
+            
+            db.session.commit()
+
+        except Exception as e:
+            logging.error(f"Error updating chat summary: {e}", exc_info=True)
+            db.session.rollback()
 
     def _save_chat_turn(self, chat: Chat, user_message: str, bot_response: str):
-        # FIX 2: Replaced memory object with explicit summary update.
         try:
-            # Save messages to database first
             user_msg = Message(chat_id=chat.id, role='user', content=user_message)
             bot_msg = Message(chat_id=chat.id, role='assistant', content=bot_response)
             db.session.add_all([user_msg, bot_msg])
-            
-            # Update the chat summary
-            chat.summary = self._update_summary(chat.summary or "", user_message, bot_response)
             db.session.commit()
+
+            # Now, update the layered summary
+            self._update_chat_summary(chat, user_message, bot_response)
             
         except Exception as e:
             logging.error(f"Error saving chat turn: {e}", exc_info=True)

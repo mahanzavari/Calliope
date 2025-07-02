@@ -3,6 +3,7 @@ from .core.config import Config
 from .core.extensions import db, migrate, mail, login_manager
 from .api.chat import chat_bp
 from .api.auth import auth_bp
+from .api.memory import memory_bp # Import new memory blueprint
 from .models.user import User
 
 def create_app():
@@ -23,12 +24,14 @@ def create_app():
     # Register blueprints
     app.register_blueprint(chat_bp, url_prefix='/api')
     app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(memory_bp, url_prefix='/api') # Register memory blueprint
 
     # Register main routes
     from .routes import main_bp
     app.register_blueprint(main_bp)
 
     with app.app_context():
-        db.create_all()
+        # db.create_all() # This can be handled by migrations
+        pass
 
-    return app 
+    return app
