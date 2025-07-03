@@ -24,12 +24,14 @@ function initializeSpeechRecognition(onStateChange) {
 
         recognition.onend = () => {
             isRecognizing = false;
+            // FIX: Ensure the callback is called on 'end' to update the UI
             if (onStateChange) onStateChange();
         };
 
         recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
             isRecognizing = false;
+            // FIX: Ensure the callback is called on 'error' as well
             if (onStateChange) onStateChange();
         };
 
@@ -63,6 +65,14 @@ export function toggleRecognition(onStateChange) {
     if (!recognition) {
         initializeSpeechRecognition(onStateChange);
     }
+    
+    // Ensure the onStateChange callback is always set for the current instance
+    if (recognition) {
+        recognition.onstart = () => { isRecognizing = true; onStateChange(); };
+        recognition.onend = () => { isRecognizing = false; onStateChange(); };
+        recognition.onerror = (event) => { console.error('STT Error:', event.error); isRecognizing = false; onStateChange(); };
+    }
+    
     if (isRecognizing) {
         recognition.stop();
     } else {

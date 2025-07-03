@@ -51,7 +51,7 @@ class ChatService:
     def get_response(self, query: str, chat_id: int = None, use_rag: bool = False, is_research_mode: bool = False) -> Generator[dict, None, None]:
         full_bot_response = ""
         new_title_generated = None
-        sources_for_response = None # To hold sources for the final event
+        sources_for_response = None
         try:
             if not query or not query.strip():
                 yield {"type": "error", "message": "Query cannot be empty"}
@@ -62,43 +62,37 @@ class ChatService:
 
             messages = []
             
-            # --- RESEARCH MODE ---
             if is_research_mode:
                 yield {"type": "status", "message": "Performing research..."}
                 rag_data = self.rag_service.get_context(query)
                 rag_context = rag_data.get("context")
-                sources_for_response = rag_data.get("sources") # Store sources
+                sources_for_response = rag_data.get("sources")
 
                 if not rag_context or not sources_for_response:
                     yield {"type": "error", "message": "Could not find relevant information for your query."}
                     return
 
-                source_list_for_prompt = "\n".join([f"[{s['id']}] {s['title']}" for s in sources_for_response])
-
-                # FIX: Updated the prompt with clearer instructions for clickable citations
+                # FIX: New prompt for inline source tagging
                 research_prompt = f"""
-You are a meticulous Research Assistant. Your goal is to provide a comprehensive, well-structured answer to the user's query based *only* on the provided research material.
+You are a meticulous Research Assistant. Your task is to answer the user's query based *only* on the provided research material.
 
-**Instructions:**
-1.  Synthesize the information from the provided sources to construct your answer.
-2.  Do **not** use any information outside of the provided text.
-3.  You **must** cite your sources by placing a footnote reference marker **immediately after** the relevant text. The marker format is `[^id]`, where 'id' is the source number. For example, a claim from the first source should be followed by `[^1]`.
-4.  If multiple sources support a single point, you can cite them together, like `[^1][^3]`.
-5.  At the end of your entire response, create a "Citations" section by defining the footnotes. The format for each footnote definition is `[^{{id}}]: [{{Title}}]({{{{URL}}}}`.
+**CRITICAL INSTRUCTION:**
+You MUST wrap every piece of information you provide with special tags indicating its source. The format is `[s:id]text from the source[/s:id]`, where 'id' is the number of the source.
+
+- **Example:** `[s:1]The sky is blue because of Rayleigh scattering.[/s:1] [s:2]The ocean also appears blue due to the reflection of the sky.[/s:2]`
+- If a sentence combines information from multiple sources, wrap each part with its corresponding tag.
+- **DO NOT** use Markdown footnotes like `[^1]`. Use **ONLY** the `[s:id]` and `[/s:id]` tags.
+- Provide a direct, synthesized answer. Do not add any introductory or concluding text outside of the source tags.
 
 **Provided Research Material:**
 ---
 {rag_context}
 ---
 
-**Sources to Cite:**
-{source_list_for_prompt}
-
-Based on this material, please answer the user's query.
+Based on this material, answer the user's query using the specified tagging format.
 """
                 messages.append(SystemMessage(content=research_prompt))
             
-            # --- REGULAR CHAT MODE ---
             else:
                 messages.append(SystemMessage(content="You are a helpful AI assistant. Be conversational and provide detailed, helpful responses."))
                 
@@ -111,6 +105,7 @@ Based on this material, please answer the user's query.
                     yield {"type": "status", "message": "Searching the web..."}
                     rag_data = self.rag_service.get_context(query)
                     rag_context = rag_data.get("context")
+                    sources_for_response = rag_data.get("sources") # Also get sources for regular RAG
                     if rag_context:
                         messages.append(SystemMessage(content=f"Here is some information from a web search to help you answer the user's query:\n{rag_context}"))
                 
@@ -152,7 +147,7 @@ Based on this material, please answer the user's query.
                 yield {"type": "sources", "data": sources_for_response}
             if new_title_generated:
                 yield {"type": "title_update", "chat_id": chat.id, "title": new_title_generated}
-    
+
     def _generate_title_for_chat(self, chat: Chat, user_message: str, bot_response: str) -> str:
         try:
             prompt = f"""Based on the following conversation, create a very short, concise title (4-5 words max).
@@ -174,6 +169,10 @@ Based on this material, please answer the user's query.
 
     def _update_chat_summary(self, chat: Chat, user_message: str, bot_response: str):
         try:
+            # We don't need to summarize research mode chats in the same way
+            if '[s:' in bot_response:
+                return
+
             summary_prompt = f"""
             Given the previous conversation summary and the latest interaction, please provide an updated, layered summary in JSON format.
 

@@ -44,36 +44,30 @@ class RAGService:
         Scrapes the main text content from a given URL.
         """
         try:
+            # FIX: Use a more common and less suspicious User-Agent header
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
             }
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
 
             soup = BeautifulSoup(response.content, 'html.parser')
 
-            # Decompose non-content tags
             for element in soup(['script', 'style', 'nav', 'footer', 'header', 'aside']):
                 element.decompose()
 
-            # A more robust heuristic to find the main content
             main_content = soup.find('main') or soup.find('article') or soup.find('body')
             
             if main_content:
-                # Get text from all child elements, which is more comprehensive than just <p>
                 text_content = main_content.get_text(separator=' ', strip=True)
             else:
-                # Fallback to just getting all text if no main tag is found
                 text_content = soup.get_text(separator=' ', strip=True)
             
-            # Basic cleaning of whitespace
             cleaned_text = ' '.join(text_content.split())
             
-            # Only return content if it's reasonably long, otherwise it's likely a blank or error page
             return cleaned_text if len(cleaned_text) > 300 else None
 
         except requests.HTTPError as e:
-            # Specifically log 4xx/5xx errors but don't crash
             print(f"HTTP error for {url}: {e}")
             return None
         except requests.RequestException as e:
@@ -123,7 +117,7 @@ class RAGService:
 
     def extract_content_from_results(self, search_results: List[Dict[str, Any]]) -> List[Document]:
         """
-        MODIFIED: Scrapes URLs with a polite delay and has better fallback logic.
+        Scrapes URLs with a polite delay and has better fallback logic.
         """
         documents = []
         urls_processed = set()
@@ -135,8 +129,6 @@ class RAGService:
             
             urls_processed.add(url)
             
-            # FIX: Introduce a polite delay to respect rate limits
-            # Random delay between 0.5 and 1.5 seconds
             delay = random.uniform(0.5, 1.5)
             print(f"Waiting for {delay:.2f}s before scraping...")
             time.sleep(delay)
@@ -148,11 +140,9 @@ class RAGService:
                 print(f"  -> Successfully scraped {len(scraped_content)} characters.")
                 page_text = scraped_content
             else:
-                # FIX: More explicit fallback to the snippet
                 print(f"  -> Scraping failed. Falling back to snippet.")
                 page_text = result.get('snippet', '')
             
-            # Only proceed if we have some content (either scraped or from snippet)
             if page_text:
                 full_content = f"Title: {result.get('title', '')}\nContent: {page_text}"
 

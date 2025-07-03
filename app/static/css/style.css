@@ -14,7 +14,7 @@
   display: flex;
   height: 100vh;
   overflow: hidden;
-  position: relative; /* Needed for positioning fixed children */
+  position: relative; 
 }
 
 /* Sidebar Panel */
@@ -38,24 +38,34 @@
   transform: translateX(0);
 }
 
+/* --- MAJOR FIX: Main Content Layout --- */
 .main-content {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  margin-left: var(--sidebar-collapsed-width);
-  width: calc(100% - var(--sidebar-collapsed-width));
-  transition: margin-left 0.3s ease, width 0.3s ease;
-  will-change: margin-left, width;
-  /* MODIFICATION: Add padding to push content below the fixed header */
+  
+  /* FIX: Change from margin-left to padding-left */
+  /* This prevents the content width from changing */
+  padding-left: var(--sidebar-collapsed-width); 
+  
+  /* FIX: Use full width of the container */
+  width: 100%; 
+  
+  transition: padding-left 0.3s ease; /* Animate the padding change */
+  will-change: padding-left;
+  
+  /* Ensure content is below the fixed header */
   padding-top: 60px; 
 }
 
+/* When sidebar is expanded, increase the padding on the main content */
 .app-container.sidebar-hover .main-content,
 .app-container.sidebar-pinned .main-content {
-  margin-left: var(--sidebar-full-width);
-  width: calc(100% - var(--sidebar-full-width));
+  padding-left: var(--sidebar-full-width);
 }
+/* --- END OF FIX --- */
+
 
 /* Fixed Buttons */
 .sidebar-toggle.is-fixed {

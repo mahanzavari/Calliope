@@ -1,8 +1,10 @@
+/* FIX: The .messages container now correctly aligns its children */
 .messages {
     flex: 1 1 auto;
     overflow-y: auto;
     width: 100%;
-    padding: 2rem 1rem;
+    /* The padding is now on the parent .chat-container, so we can adjust it here */
+    padding: 2rem 0; 
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -11,7 +13,8 @@
 /* Welcome Message (centered) */
 .welcome-message {
     text-align: center;
-    max-width: 600px;
+    /* max-width is now inherited, but we can be explicit */
+    max-width: 600px; 
     margin: 0 auto;
     padding: 2rem;
     background-color: var(--bg-secondary);
@@ -314,40 +317,46 @@
     font-size: 0.9em;
 }
 
-/* NEW: Footnote & Citation Styles */
-.message-text sup a.footnote-ref {
-    display: inline-block;
+.source-text {
     background-color: var(--accent-color-translucent);
+    border-bottom: 2px solid var(--accent-color);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    padding: 1px 0;
+}
+.source-text:hover {
+    background-color: rgba(0, 123, 255, 0.2);
+}
+[data-theme="dark"] .source-text:hover {
+    background-color: rgba(77, 171, 247, 0.3);
+}
+
+.tippy-box[data-theme~='light-border'] {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
+    border-radius: 0.5rem;
+}
+.tippy-box[data-theme~='light-border'][data-placement^='top'] > .tippy-arrow::before {
+    border-top-color: var(--border-color);
+}
+.tippy-box[data-theme~='light-border'][data-placement^='bottom'] > .tippy-arrow::before {
+    border-bottom-color: var(--border-color);
+}
+.source-popover {
+    font-size: 0.875rem;
+    text-align: left;
+}
+.source-popover strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+.source-popover a {
     color: var(--accent-color);
-    border-radius: 4px;
-    padding: 1px 5px;
     text-decoration: none;
-    font-size: 0.75em;
-    font-weight: bold;
-    line-height: 1.2;
-    transition: all 0.2s ease;
+    word-break: break-all;
 }
-.message-text sup a.footnote-ref:hover {
-    background-color: var(--accent-color);
-    color: white;
-}
-.message-text .footnotes {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border-color);
-    font-size: 0.9rem;
-}
-.message-text .footnotes ol {
-    padding-left: 20px;
-}
-.message-text .footnotes li {
-    margin-bottom: 0.5rem;
-    color: var(--text-secondary);
-}
-.message-text .footnotes a {
-    color: var(--accent-color);
-    text-decoration: none;
-}
-.message-text .footnotes a:hover {
+.source-popover a:hover {
     text-decoration: underline;
 }

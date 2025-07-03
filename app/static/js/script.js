@@ -136,6 +136,7 @@ function handleActionButton() {
     } else if (actionBtn.classList.contains('state-send')) {
         sendMessage(messageInput.value.trim(), searchModeEnabled, researchModeEnabled, fileUpload.files, null, updateActionButtonState);
     } else {
+        // FIX: The callback function is correctly passed here.
         toggleRecognition(updateActionButtonState);
     }
 }
